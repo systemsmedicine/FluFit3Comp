@@ -31,20 +31,8 @@
 #define A74 (125.0/192.0)
 #define A75 (-2187.0/6784.0)
 #define A76 (11.0/84.0)
-#define E1 (71.0/57600.0)
-#define E3 (-71.0/16695.0)
-#define E4 (71.0/1920.0)
-#define E5 (-17253.0/339200.0)
-#define E6 (22.0/525.0)
-#define E7 -0.025
 
-#define BETADP5 0.08
-#define ALPHADP5 (0.2 - BETADP5*0.75)
-#define SAFE 0.9
-#define MINSCALE 0.2
-#define MAXSCALE 10.0 
-
-/*=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- STRUCTURES =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+/*=-=-=-=-=-=-=-=-=-=-=-=-=- STRUCTURES =-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
 typedef struct 
 {
@@ -52,17 +40,20 @@ typedef struct
 	float I1;
 	float R1;
 	float V1;
+	float F1;
 
 	float U2;
 	float I2;
 	float R2;
 	float V2;
+	float F2;
 	float T2;
 
 	float U3;
 	float I3;
 	float R3;
 	float V3;
+	float F3;
 	float T3;
 } 
 comp;
@@ -73,17 +64,20 @@ typedef struct
 	float I10;
 	float R10;
 	float V10;
+	float F10;
 
 	float U20;
 	float I20;
 	float R20;
 	float V20;
+	float F20;
 	float T20;
 
 	float U30;
 	float I30;
 	float R30;
 	float V30;
+	float F30;
 	float T30;
 
 	float bet1;
@@ -92,6 +86,8 @@ typedef struct
 	float del1;
 	float rho1;
 	float sig1;
+	float alp1;
+	float phi1;
 
 	float bet2;
 	float xi2;
@@ -100,9 +96,10 @@ typedef struct
 	float del2;
 	float rho2;
 	float sig2;
+	float alp2;
+	float phi2;
 	float eta2;
 	float kap2;
-	float alp2;
 	float ups2;
 
 	float bet3;
@@ -112,9 +109,10 @@ typedef struct
 	float del3;
 	float rho3;
 	float sig3;
+	float alp3;
+	float phi3;
 	float eta3;
 	float kap3;
-	float alp3;
 	float ups3;
 
 	float gam12;
@@ -129,6 +127,7 @@ typedef struct
 	float t0;
 	float tN;
 	float dt;
+
 	int D;
 	int Np;
 	int nData;
@@ -138,9 +137,8 @@ typedef struct
 } 
 param;
 
-/*=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- FUNCTIONS =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
+/*=-=-=-=-=-=-=-=-=-=-=-=-=-=- FUNCTIONS =-=-=-=-=-=-=-=-=-=-=-=-=-=-*/
 
-// Encuentra la siguiente potencia de dos
 long nextPow2(long x)
 {
     --x;
@@ -152,9 +150,9 @@ long nextPow2(long x)
     return ++x;
 }
 
-//-------------------------------------------------------------------------------
+//-------------------------------------------------------------------------
 
-__device__ void derivs(int idx, param pars, float *pop, comp Y, comp *dotY)
+__device__ void model(int idx, param pars, float *pop, comp Y, comp *dotY)
 {
 	int ii = 1;
 	float bet1 = pop[idx + ii];
@@ -168,6 +166,10 @@ __device__ void derivs(int idx, param pars, float *pop, comp Y, comp *dotY)
 	float rho1 = pop[idx + ii];
 	ii++;
 	float sig1 = pop[idx + ii];
+	ii++;
+	float alp1 = pop[idx + ii];
+	ii++;
+	float phi1 = pop[idx + ii];
 	ii++;
 
 	float bet2 = pop[idx + ii];
@@ -184,11 +186,13 @@ __device__ void derivs(int idx, param pars, float *pop, comp Y, comp *dotY)
 	ii++;
 	float sig2 = pop[idx + ii];
 	ii++;
+	float alp2 = pop[idx + ii];
+	ii++;
+	float phi2 = pop[idx + ii];
+	ii++;
 	float eta2 = pop[idx + ii];
 	ii++;
 	float kap2 = pop[idx + ii];
-	ii++;
-	float alp2 = pop[idx + ii];
 	ii++;
 	float ups2 = pop[idx + ii];
 	ii++;
@@ -207,11 +211,13 @@ __device__ void derivs(int idx, param pars, float *pop, comp Y, comp *dotY)
 	ii++;
 	float sig3 = pop[idx + ii];
 	ii++;
+	float alp3 = pop[idx + ii];
+	ii++;
+	float phi3 = pop[idx + ii];
+	ii++;
 	float eta3 = pop[idx + ii];
 	ii++;
 	float kap3 = pop[idx + ii];
-	ii++;
-	float alp3 = pop[idx + ii];
 	ii++;
 	float ups3 = pop[idx + ii];
 	ii++;
@@ -236,31 +242,69 @@ __device__ void derivs(int idx, param pars, float *pop, comp Y, comp *dotY)
 	dotY->I1 = bet1*Y.U1*Y.V1 - del1*Y.I1;
 	dotY->R1 = xi1*Y.U1*Y.I1 - chi1*Y.R1;
 	dotY->V1 = rho1*Y.I1 - sig1*Y.V1 - gam12*Y.V1 + gam21*Y.V2;
+	dotY->F1 = alp1*Y.I1 - phi1*Y.F1;
 
 	dotY->U2 = -bet2*Y.U2*Y.V2 - xi2*Y.U2*Y.I2 + chi2*Y.R2;
 	dotY->I2 = bet2*Y.U2*Y.V2 - del2*Y.I2 - psi2*Y.I2*Y.T2;
 	dotY->R2 = xi2*Y.U2*Y.I2 - chi2*Y.R2;
-	dotY->V2 = rho2*Y.I2 - sig2*Y.V2 - gam21*Y.V2 + gam12*Y.V1 - gam23*Y.V2 + gam32*Y.V3;
-	//dotY->T2 = eta2*Y.T2*(pow(Y.V2,m)/(pow(Y.V2,m) + pow(kap2,m)))
-	//		- psi2*Y.I2*Y.T2 - ups2*Y.T2 + ups2*T20 - zet23*Y.T2 + zet32*Y.T3;
-	dotY->T2 = eta2*Y.T2*(pow(Y.V2,m)/(pow(Y.V2,m) + pow(kap2,m))) - alp2*Y.T2/(1.0 + Y.V2*Y.V2)
-                                - ups2*Y.T2 + ups2*T20 - zet23*Y.T2 + zet32*Y.T3;
+	dotY->V2 = rho2*Y.I2 - sig2*Y.V2
+		- gam21*Y.V2 + gam12*Y.V1 - gam23*Y.V2 + gam32*Y.V3;
+	dotY->F2 = alp2*Y.I2 - phi2*Y.F2;
+	dotY->T2 = eta2*Y.T2*(pow(Y.V2,m)/(pow(Y.V2,m) + pow(kap2,m)))
+		- ups2*Y.T2 + ups2*T20 - zet23*Y.T2 + zet32*Y.T3;
 
 	dotY->U3 = -bet3*Y.U3*Y.V3 - xi3*Y.U3*Y.I3 + chi3*Y.R3;
 	dotY->I3 = bet3*Y.U3*Y.V3 - del3*Y.I3 - psi3*Y.I3*Y.T3;
 	dotY->R3 = xi3*Y.U3*Y.I3 - chi3*Y.R3;
 	dotY->V3 = rho3*Y.I3 - sig3*Y.V3 - gam32*Y.V3 + gam23*Y.V2;
-	//dotY->T3 = eta3*Y.T3*(pow(Y.V3,m)/(pow(Y.V3,m) + pow(kap3,m)))
-	//		- psi3*Y.I3*Y.T3 - ups3*Y.T3 + ups3*T30 - zet32*Y.T3 + zet23*Y.T2;
-	dotY->T3 = eta3*Y.T3*(pow(Y.V3,m)/(pow(Y.V3,m) + pow(kap3,m))) - alp3*Y.T3/(1.0 + Y.V3*Y.V3)
-				- ups3*Y.T3 + ups3*T30 - zet32*Y.T3 + zet23*Y.T2;
+	dotY->F3 = alp3*Y.I3 - phi3*Y.F3;
+	dotY->T3 = eta3*Y.T3*(pow(Y.V3,m)/(pow(Y.V3,m) + pow(kap3,m)))
+		- ups3*Y.T3 + ups3*T30 - zet32*Y.T3 + zet23*Y.T2;
 
 	return;
 }
 
-//-------------------------------------------------------------------------------
+//-------------------------------------------------------------------------
+
+__device__ void deriv_step(int idx, param pars, float *pop, comp *Y)
+{
+        float h = pars.dt;
+        comp Yold, Ytemp, k1, k2, k3, k4, k5, k6;
+
+	// Old Y values
+        Yold.U1 = Y->U1;
+        Yold.I1 = Y->I1;
+        Yold.R1 = Y->R1;
+        Yold.V1 = Y->V1;
+        Yold.F1 = Y->F1;
+
+        Yold.U2 = Y->U2;
+        Yold.I2 = Y->I2;
+        Yold.R2 = Y->R2;
+        Yold.V2 = Y->V2;
+        Yold.F2 = Y->F2;
+        Yold.T2 = Y->T2;
+
+        Yold.U3 = Y->U3;
+        Yold.I3 = Y->I3;
+        Yold.R3 = Y->R3;
+        Yold.V3 = Y->V3;
+        Yold.F3 = Y->F3;
+        Yold.T3 = Y->T3;
+
+	model(idx, pars, pop, Yold, &k1);
+
+	Ytemp.U1 = Yold.U1 + h*A21*k1.U1;
+	Ytemp.I1 = Yold.I1 + h*A21*k1.I1;
+	Ytemp.R1 = Yold.R1 + h*A21*k1.R1;
+	Ytemp.V1 = Yold.V1 + h*A21*k1.V1;
+	Ytemp.F1 = Yold.F1 + h*A21*k1.F1;
+	// Hereeeeeeeeeeeeeeeeee
+}
+
+//-------------------------------------------------------------------------
 __global__ void costFunction(param pars, float *pop, float *timeData, float *dataN, float *dataT, float *dataL,
-		float *timeCD8, float *cd8DataT, float *cd8DataL, float *valCostFn)
+		float *timeCD8, float *cd8Data, float *valCostFn)
 {
 	int ind;
 
@@ -280,17 +324,20 @@ __global__ void costFunction(param pars, float *pop, float *timeData, float *dat
 	Y.I1 = pars.I10;
 	Y.R1 = pars.R10;
 	Y.V1 = pow(10, pop[idx]); // V10
+	//Y.F1 = pars.F10;
 
 	Y.U2 = pars.U20;
 	Y.I2 = pars.I20;
 	Y.R2 = pars.R20;
 	Y.V2 = pars.V20;
+	//Y.F2 = pars.F20;
 	Y.T2 = pars.T20;
 
 	Y.U3 = pars.U30;
 	Y.I3 = pars.I30;
 	Y.R3 = pars.R30;
 	Y.V3 = pars.V30;
+	//Y.F3 = pars.F30;
 	Y.T3 = pars.T30;
 
 	derivs(idx, pars, pop, Y, &dotY);
@@ -327,17 +374,20 @@ __global__ void costFunction(param pars, float *pop, float *timeData, float *dat
 		ytemp.I1 = Y.I1 + h*A21*dotY.I1;
 		ytemp.R1 = Y.R1 + h*A21*dotY.R1;
 		ytemp.V1 = Y.V1 + h*A21*dotY.V1;
+		//ytemp.F1 = Y.F1 + h*A21*dotY.F1;
 
 		ytemp.U2 = Y.U2 + h*A21*dotY.U2;
 		ytemp.I2 = Y.I2 + h*A21*dotY.I2;
 		ytemp.R2 = Y.R2 + h*A21*dotY.R2;
 		ytemp.V2 = Y.V2 + h*A21*dotY.V2;
+		//ytemp.F2 = Y.F2 + h*A21*dotY.F2;
 		ytemp.T2 = Y.T2 + h*A21*dotY.T2;
 
 		ytemp.U3 = Y.U3 + h*A21*dotY.U3;
 		ytemp.I3 = Y.I3 + h*A21*dotY.I3;
 		ytemp.R3 = Y.R3 + h*A21*dotY.R3;
 		ytemp.V3 = Y.V3 + h*A21*dotY.V3;
+		//ytemp.F3 = Y.F3 + h*A21*dotY.F3;
 		ytemp.T3 = Y.T3 + h*A21*dotY.T3;
 
 		derivs(idx, pars, pop, ytemp, &k2);
@@ -346,17 +396,20 @@ __global__ void costFunction(param pars, float *pop, float *timeData, float *dat
 		ytemp.I1 = Y.I1 + h*(A31*dotY.I1 + A32*k2.I1);
 		ytemp.R1 = Y.R1 + h*(A31*dotY.R1 + A32*k2.R1);
 		ytemp.V1 = Y.V1 + h*(A31*dotY.V1 + A32*k2.V1);
+		//ytemp.F1 = Y.F1 + h*(A31*dotY.F1 + A32*k2.F1);
 
 		ytemp.U2 = Y.U2 + h*(A31*dotY.U2 + A32*k2.U2);
 		ytemp.I2 = Y.I2 + h*(A31*dotY.I2 + A32*k2.I2);
 		ytemp.R2 = Y.R2 + h*(A31*dotY.R2 + A32*k2.R2);
 		ytemp.V2 = Y.V2 + h*(A31*dotY.V2 + A32*k2.V2);
+		//ytemp.F2 = Y.F2 + h*(A31*dotY.F2 + A32*k2.F2);
 		ytemp.T2 = Y.T2 + h*(A31*dotY.T2 + A32*k2.T2);
 
 		ytemp.U3 = Y.U3 + h*(A31*dotY.U3 + A32*k2.U3);
 		ytemp.I3 = Y.I3 + h*(A31*dotY.I3 + A32*k2.I3);
 		ytemp.R3 = Y.R3 + h*(A31*dotY.R3 + A32*k2.R3);
 		ytemp.V3 = Y.V3 + h*(A31*dotY.V3 + A32*k2.V3);
+		//ytemp.F3 = Y.F3 + h*(A31*dotY.F3 + A32*k2.F3);
 		ytemp.T3 = Y.T3 + h*(A31*dotY.T3 + A32*k2.T3);
 
 		derivs(idx, pars, pop, ytemp, &k3);
@@ -365,17 +418,20 @@ __global__ void costFunction(param pars, float *pop, float *timeData, float *dat
 		ytemp.I1 = Y.I1 + h*(A41*dotY.I1 + A42*k2.I1 + A43*k3.I1);
 		ytemp.R1 = Y.R1 + h*(A41*dotY.R1 + A42*k2.R1 + A43*k3.R1);
 		ytemp.V1 = Y.V1 + h*(A41*dotY.V1 + A42*k2.V1 + A43*k3.V1);
+		//ytemp.F1 = Y.F1 + h*(A41*dotY.F1 + A42*k2.F1 + A43*k3.F1);
 
 		ytemp.U2 = Y.U2 + h*(A41*dotY.U2 + A42*k2.U2 + A43*k3.U2);
 		ytemp.I2 = Y.I2 + h*(A41*dotY.I2 + A42*k2.I2 + A43*k3.I2);
 		ytemp.R2 = Y.R2 + h*(A41*dotY.R2 + A42*k2.R2 + A43*k3.R2);
 		ytemp.V2 = Y.V2 + h*(A41*dotY.V2 + A42*k2.V2 + A43*k3.V2);
+		//ytemp.F2 = Y.F2 + h*(A41*dotY.F2 + A42*k2.F2 + A43*k3.F2);
 		ytemp.T2 = Y.T2 + h*(A41*dotY.T2 + A42*k2.T2 + A43*k3.T2);
 
 		ytemp.U3 = Y.U3 + h*(A41*dotY.U3 + A42*k2.U3 + A43*k3.U3);
 		ytemp.I3 = Y.I3 + h*(A41*dotY.I3 + A42*k2.I3 + A43*k3.I3);
 		ytemp.R3 = Y.R3 + h*(A41*dotY.R3 + A42*k2.R3 + A43*k3.R3);
 		ytemp.V3 = Y.V3 + h*(A41*dotY.V3 + A42*k2.V3 + A43*k3.V3);
+		//ytemp.F3 = Y.F3 + h*(A41*dotY.F3 + A42*k2.F3 + A43*k3.F3);
 		ytemp.T3 = Y.T3 + h*(A41*dotY.T3 + A42*k2.T3 + A43*k3.T3);
 
 		derivs(idx, pars, pop, ytemp, &k4);
@@ -384,17 +440,20 @@ __global__ void costFunction(param pars, float *pop, float *timeData, float *dat
 		ytemp.I1 = Y.I1 + h*(A51*dotY.I1 + A52*k2.I1 + A53*k3.I1 + A54*k4.I1);
 		ytemp.R1 = Y.R1 + h*(A51*dotY.R1 + A52*k2.R1 + A53*k3.R1 + A54*k4.R1);
 		ytemp.V1 = Y.V1 + h*(A51*dotY.V1 + A52*k2.V1 + A53*k3.V1 + A54*k4.V1);
+		//ytemp.F1 = Y.F1 + h*(A51*dotY.F1 + A52*k2.F1 + A53*k3.F1 + A54*k4.F1);
 
 		ytemp.U2 = Y.U2 + h*(A51*dotY.U2 + A52*k2.U2 + A53*k3.U2 + A54*k4.U2);
 		ytemp.I2 = Y.I2 + h*(A51*dotY.I2 + A52*k2.I2 + A53*k3.I2 + A54*k4.I2);
 		ytemp.R2 = Y.R2 + h*(A51*dotY.R2 + A52*k2.R2 + A53*k3.R2 + A54*k4.R2);
 		ytemp.V2 = Y.V2 + h*(A51*dotY.V2 + A52*k2.V2 + A53*k3.V2 + A54*k4.V2);
+		//ytemp.F2 = Y.F2 + h*(A51*dotY.F2 + A52*k2.F2 + A53*k3.F2 + A54*k4.F2);
 		ytemp.T2 = Y.T2 + h*(A51*dotY.T2 + A52*k2.T2 + A53*k3.T2 + A54*k4.T2);
 
 		ytemp.U3 = Y.U3 + h*(A51*dotY.U3 + A52*k2.U3 + A53*k3.U3 + A54*k4.U3);
 		ytemp.I3 = Y.I3 + h*(A51*dotY.I3 + A52*k2.I3 + A53*k3.I3 + A54*k4.I3);
 		ytemp.R3 = Y.R3 + h*(A51*dotY.R3 + A52*k2.R3 + A53*k3.R3 + A54*k4.R3);
 		ytemp.V3 = Y.V3 + h*(A51*dotY.V3 + A52*k2.V3 + A53*k3.V3 + A54*k4.V3);
+		//ytemp.F3 = Y.F3 + h*(A51*dotY.F3 + A52*k2.F3 + A53*k3.F3 + A54*k4.F3);
 		ytemp.T3 = Y.T3 + h*(A51*dotY.T3 + A52*k2.T3 + A53*k3.T3 + A54*k4.T3);
 
 		derivs(idx, pars, pop, ytemp, &k5);
@@ -403,17 +462,20 @@ __global__ void costFunction(param pars, float *pop, float *timeData, float *dat
 		ytemp.I1 = Y.I1 + h*(A61*dotY.I1 + A62*k2.I1 + A63*k3.I1 + A64*k4.I1 + A65*k5.I1);
 		ytemp.R1 = Y.R1 + h*(A61*dotY.R1 + A62*k2.R1 + A63*k3.R1 + A64*k4.R1 + A65*k5.R1);
 		ytemp.V1 = Y.V1 + h*(A61*dotY.V1 + A62*k2.V1 + A63*k3.V1 + A64*k4.V1 + A65*k5.V1);
+		//ytemp.F1 = Y.F1 + h*(A61*dotY.F1 + A62*k2.F1 + A63*k3.F1 + A64*k4.F1 + A65*k5.F1);
 
 		ytemp.U2 = Y.U2 + h*(A61*dotY.U2 + A62*k2.U2 + A63*k3.U2 + A64*k4.U2 + A65*k5.U2);
 		ytemp.I2 = Y.I2 + h*(A61*dotY.I2 + A62*k2.I2 + A63*k3.I2 + A64*k4.I2 + A65*k5.I2);
 		ytemp.R2 = Y.R2 + h*(A61*dotY.R2 + A62*k2.R2 + A63*k3.R2 + A64*k4.R2 + A65*k5.R2);
 		ytemp.V2 = Y.V2 + h*(A61*dotY.V2 + A62*k2.V2 + A63*k3.V2 + A64*k4.V2 + A65*k5.V2);
+		//ytemp.F2 = Y.F2 + h*(A61*dotY.F2 + A62*k2.F2 + A63*k3.F2 + A64*k4.F2 + A65*k5.F2);
 		ytemp.T2 = Y.T2 + h*(A61*dotY.T2 + A62*k2.T2 + A63*k3.T2 + A64*k4.T2 + A65*k5.T2);
 
 		ytemp.U3 = Y.U3 + h*(A61*dotY.U3 + A62*k2.U3 + A63*k3.U3 + A64*k4.U3 + A65*k5.U3);
 		ytemp.I3 = Y.I3 + h*(A61*dotY.I3 + A62*k2.I3 + A63*k3.I3 + A64*k4.I3 + A65*k5.I3);
 		ytemp.R3 = Y.R3 + h*(A61*dotY.R3 + A62*k2.R3 + A63*k3.R3 + A64*k4.R3 + A65*k5.R3);
 		ytemp.V3 = Y.V3 + h*(A61*dotY.V3 + A62*k2.V3 + A63*k3.V3 + A64*k4.V3 + A65*k5.V3);
+		//ytemp.F3 = Y.F3 + h*(A61*dotY.F3 + A62*k2.F3 + A63*k3.F3 + A64*k4.F3 + A65*k5.F3);
 		ytemp.T3 = Y.T3 + h*(A61*dotY.T3 + A62*k2.T3 + A63*k3.T3 + A64*k4.T3 + A65*k5.T3);
 
 		derivs(idx, pars, pop, ytemp, &k6);
@@ -422,17 +484,20 @@ __global__ void costFunction(param pars, float *pop, float *timeData, float *dat
 		yOut.I1 = Y.I1 + h*(A71*dotY.I1 + A73*k3.I1 + A74*k4.I1 + A75*k5.I1 + A76*k6.I1);
 		yOut.R1 = Y.R1 + h*(A71*dotY.R1 + A73*k3.R1 + A74*k4.R1 + A75*k5.R1 + A76*k6.R1);
 		yOut.V1 = Y.V1 + h*(A71*dotY.V1 + A73*k3.V1 + A74*k4.V1 + A75*k5.V1 + A76*k6.V1);
+		//yOut.F1 = Y.F1 + h*(A71*dotY.F1 + A73*k3.F1 + A74*k4.F1 + A75*k5.F1 + A76*k6.F1);
 
 		yOut.U2 = Y.U2 + h*(A71*dotY.U2 + A73*k3.U2 + A74*k4.U2 + A75*k5.U2 + A76*k6.U2);
 		yOut.I2 = Y.I2 + h*(A71*dotY.I2 + A73*k3.I2 + A74*k4.I2 + A75*k5.I2 + A76*k6.I2);
 		yOut.R2 = Y.R2 + h*(A71*dotY.R2 + A73*k3.R2 + A74*k4.R2 + A75*k5.R2 + A76*k6.R2);
 		yOut.V2 = Y.V2 + h*(A71*dotY.V2 + A73*k3.V2 + A74*k4.V2 + A75*k5.V2 + A76*k6.V2);
+		//yOut.F2 = Y.F2 + h*(A71*dotY.F2 + A73*k3.F2 + A74*k4.F2 + A75*k5.F2 + A76*k6.F2);
 		yOut.T2 = Y.T2 + h*(A71*dotY.T2 + A73*k3.T2 + A74*k4.T2 + A75*k5.T2 + A76*k6.T2);
 
 		yOut.U3 = Y.U3 + h*(A71*dotY.U3 + A73*k3.U3 + A74*k4.U3 + A75*k5.U3 + A76*k6.U3);
 		yOut.I3 = Y.I3 + h*(A71*dotY.I3 + A73*k3.I3 + A74*k4.I3 + A75*k5.I3 + A76*k6.I3);
 		yOut.R3 = Y.R3 + h*(A71*dotY.R3 + A73*k3.R3 + A74*k4.R3 + A75*k5.R3 + A76*k6.R3);
 		yOut.V3 = Y.V3 + h*(A71*dotY.V3 + A73*k3.V3 + A74*k4.V3 + A75*k5.V3 + A76*k6.V3);
+		//yOut.F3 = Y.F3 + h*(A71*dotY.F3 + A73*k3.F3 + A74*k4.F3 + A75*k5.F3 + A76*k6.F3);
 		yOut.T3 = Y.T3 + h*(A71*dotY.T3 + A73*k3.T3 + A74*k4.T3 + A75*k5.T3 + A76*k6.T3);
 
 		derivs(idx, pars, pop, yOut, &dotYnew);
@@ -442,17 +507,20 @@ __global__ void costFunction(param pars, float *pop, float *timeData, float *dat
 		if (isnan(yOut.I1)) nanFlag = 1;
 		if (isnan(yOut.R1)) nanFlag = 1;
 		if (isnan(yOut.V1)) nanFlag = 1;
+		//if (isnan(yOut.F1)) nanFlag = 1;
 
 		if (isnan(yOut.U2)) nanFlag = 1;
 		if (isnan(yOut.I2)) nanFlag = 1;
 		if (isnan(yOut.R2)) nanFlag = 1;
 		if (isnan(yOut.V2)) nanFlag = 1;
+		//if (isnan(yOut.F2)) nanFlag = 1;
 		if (isnan(yOut.T2)) nanFlag = 1;
 
 		if (isnan(yOut.U3)) nanFlag = 1;
 		if (isnan(yOut.I3)) nanFlag = 1;
 		if (isnan(yOut.R3)) nanFlag = 1;
 		if (isnan(yOut.V3)) nanFlag = 1;
+		//if (isnan(yOut.F3)) nanFlag = 1;
 		if (isnan(yOut.T3)) nanFlag = 1;
 		if (nanFlag) break;
 
@@ -485,20 +553,11 @@ __global__ void costFunction(param pars, float *pop, float *timeData, float *dat
 			if (!flag) ttData = timeData[nn];
 		}
 
-		// This calculates the qualitative part
+		// This part calculates the qualitative part
 		if (tt > ttCD8 - 0.5 && !flag8)
 		{
-			mean8 = yOut.T2 < 1.0 ? 0.0 : log10(yOut.T2);
-			aux = cd8DataT[nn8] - mean8;
-			if (aux < 0.0) aux *= -1;
-			if (aux > 0.25)
-			{
-				nanFlag = 1;
-				break;
-			}
-			
 			mean8 = yOut.T3 < 1.0 ? 0.0 : log10(yOut.T3);
-			aux = cd8DataL[nn8] - mean8;
+			aux = cd8Data[nn8] - mean8;
 			if (aux < 0.0) aux *= -1;
 			if (aux > 0.25)
 			{
@@ -629,7 +688,7 @@ int main()
 	int nData, nDataCD8, nn;
 	float auxfloat;
 	float *timeData, *meanN, *stdN, *meanT, *stdT, *meanL, *stdL;
-	float *timeCD8, *cd8DataT, *cd8DataL;
+	float *timeCD8, *cd8Data;
 	char renglon[200], dirData[500], *linea;
 	FILE *fileRead;
 
@@ -718,8 +777,7 @@ int main()
 	nDataCD8--;
 
 	cudaMallocManaged(&timeCD8, nDataCD8*sizeof(float));
-	cudaMallocManaged(&cd8DataT, nDataCD8*sizeof(float));
-	cudaMallocManaged(&cd8DataL, nDataCD8*sizeof(float));
+	cudaMallocManaged(&cd8Data, nDataCD8*sizeof(float));
 
 	fileRead = fopen(dirData, "r");
 	if (fgets(renglon, sizeof(renglon), fileRead) == NULL) exit (1);
@@ -735,11 +793,7 @@ int main()
 
 		linea = strtok(NULL, ",");
 		sscanf(linea, "%f", &auxfloat);
-		cd8DataT[nn] = log10(auxfloat);
-
-		linea = strtok(NULL, ",");
-		sscanf(linea, "%f", &auxfloat);
-		cd8DataL[nn] = log10(auxfloat);
+		cd8Data[nn] = log10(auxfloat);
 
 		nn++;
 	}
@@ -820,18 +874,21 @@ int main()
         pars.U10 = 5e8;
         pars.I10 = 0.0;
         pars.R10 = 0.0;
+        //pars.F10 = 0.0;
 
         pars.U20 = 5e8;
         pars.I20 = 0.0;
         pars.R20 = 0.0;
         pars.V20 = 0.0;
-        pars.T20 = 2e2;
+        //pars.F20 = 0.0;
+        pars.T20 = 1e6;
 
         pars.U30 = 5e8;
         pars.I30 = 0.0;
         pars.R30 = 0.0;
         pars.V30 = 0.0;
-        pars.T30 = 2e5;
+        //pars.F30 = 0.0;
+        pars.T30 = 1e6;
 
 
 	float *lowerLim, *upperLim, *pop;
@@ -864,7 +921,7 @@ int main()
 	Ran ranUni(seed);
 	Normaldev ranNorm(0.0, 1.0, seed); // Standard dev (Z)
 
-	int sizeSample = 5;
+	int sizeSample = 1;
 	pars.sizeSample = sizeSample;
 
 	// Generate random data in normal distribution
@@ -879,9 +936,9 @@ int main()
 		for (jj=0; jj<sizeSample; jj++)
 		{
 			idx = jj + ii*sizeSample;
-			dataN[idx] = meanN[ii] + stdN[ii]*ranNorm.dev();
-			dataT[idx] = meanT[ii] + stdT[ii]*ranNorm.dev();
-			dataL[idx] = meanL[ii] + stdL[ii]*ranNorm.dev();
+			dataN[idx] = meanN[ii];// + stdN[ii]*ranNorm.dev();
+			dataT[idx] = meanT[ii];// + stdT[ii]*ranNorm.dev();
+			dataL[idx] = meanL[ii];// + stdL[ii]*ranNorm.dev();
 		}
 	free(meanN);
 	free(meanT);
@@ -912,7 +969,7 @@ int main()
 	blks = 1 + (Np - 1)/ths;
 
 	// Calcula el valor de la función objetivo
-	costFunction<<<blks, ths>>>(pars, pop, timeData, dataN, dataT, dataL, timeCD8, cd8DataT, cd8DataL, valCostFn);
+	costFunction<<<blks, ths>>>(pars, pop, timeData, dataN, dataT, dataL, timeCD8, cd8Data, valCostFn);
 	cudaDeviceSynchronize();
 
     	/*+*+*+*+*+ START OPTIMIZATION +*+*+*+*+*/
@@ -970,7 +1027,7 @@ int main()
 		newPopulation<<<blks, ths>>>(Np, D, Cr, Fm, d_randUni, iiMut, lowerLim, upperLim, pop, d_newPop);
 
 		// Calcula el valor de la función objetivo
-		costFunction<<<blks, ths>>>(pars, d_newPop, timeData, dataN, dataT, dataL, timeCD8, cd8DataT, cd8DataL, d_newValCostFn);
+		costFunction<<<blks, ths>>>(pars, d_newPop, timeData, dataN, dataT, dataL, timeCD8, cd8Data, d_newValCostFn);
 
 		// Selecciona el mejor vector y lo guarda en la poblacion "pop"
 		selection<<<blks, ths>>>(Np, D, pop, d_newPop, valCostFn, d_newValCostFn);
@@ -990,13 +1047,9 @@ int main()
 	// Imprime el mejor vector de parámetros
 
 	FILE *fPar;
-	fPar = fopen("bestPars.dat", "a");
-	if (valCostFn[iiMin] < 10)
-	{
-		//fprintf(fPar, "#BestPar: RMS = %e\n", minVal);
-		for (jj=0; jj<D-1; jj++) fprintf(fPar, "%.4e\t", pop[iiMin*D + jj]);
-		fprintf(fPar, "%.4e\n", pop[iiMin*D + D-1]);
-	}
+	fPar = fopen("bestPars.dat", "w");
+	fprintf(fPar, "#BestPar: RMS = %e\n", minVal);
+	for (jj=0; jj<D; jj++) fprintf(fPar, "%e\n", pop[iiMin*D + jj]);
 	fclose(fPar);
 
 	printf("FINISHED\n");
@@ -1008,8 +1061,7 @@ int main()
 	cudaFree(dataN);
 	cudaFree(dataT);
 	cudaFree(dataL);
-	cudaFree(cd8DataT);
-	cudaFree(cd8DataL);
+	cudaFree(cd8Data);
 	cudaFree(iiMut);
 	cudaFree(pop);
 	cudaFree(d_newPop);
