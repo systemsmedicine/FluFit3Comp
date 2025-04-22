@@ -268,29 +268,29 @@ __device__ void model(int idx, param pars, float *pop, comp Y, comp *dotY)
 
 __device__ void deriv_step(int idx, param pars, float *pop, comp *Y)
 {
-        float h = pars.dt;
-        comp Yold, Ytemp, k1, k2, k3, k4, k5, k6;
+	float h = pars.dt;
+    comp Yold, Ytemp, k1, k2, k3, k4, k5, k6;
 
 	// Old Y values
-        Yold.U1 = Y->U1;
-        Yold.I1 = Y->I1;
-        Yold.R1 = Y->R1;
-        Yold.V1 = Y->V1;
-        Yold.F1 = Y->F1;
-
-        Yold.U2 = Y->U2;
-        Yold.I2 = Y->I2;
-        Yold.R2 = Y->R2;
-        Yold.V2 = Y->V2;
-        Yold.F2 = Y->F2;
-        Yold.T2 = Y->T2;
-
-        Yold.U3 = Y->U3;
-        Yold.I3 = Y->I3;
-        Yold.R3 = Y->R3;
-        Yold.V3 = Y->V3;
-        Yold.F3 = Y->F3;
-        Yold.T3 = Y->T3;
+	Yold.U1 = Y->U1;
+	Yold.I1 = Y->I1;
+	Yold.R1 = Y->R1;
+	Yold.V1 = Y->V1;
+	Yold.F1 = Y->F1;
+	
+	Yold.U2 = Y->U2;
+	Yold.I2 = Y->I2;
+	Yold.R2 = Y->R2;
+	Yold.V2 = Y->V2;
+	Yold.F2 = Y->F2;
+	Yold.T2 = Y->T2;
+	
+	Yold.U3 = Y->U3;
+	Yold.I3 = Y->I3;
+	Yold.R3 = Y->R3;
+	Yold.V3 = Y->V3;
+	Yold.F3 = Y->F3;
+	Yold.T3 = Y->T3;
 
 	model(idx, pars, pop, Yold, &k1);
 
@@ -299,9 +299,134 @@ __device__ void deriv_step(int idx, param pars, float *pop, comp *Y)
 	Ytemp.R1 = Yold.R1 + h*A21*k1.R1;
 	Ytemp.V1 = Yold.V1 + h*A21*k1.V1;
 	Ytemp.F1 = Yold.F1 + h*A21*k1.F1;
-	// Hereeeeeeeeeeeeeeeeee
-}
 
+	Ytemp.U2 = Yold.U2 + h*A21*k1.U2;
+	Ytemp.I2 = Yold.I2 + h*A21*k1.I2;
+	Ytemp.R2 = Yold.R2 + h*A21*k1.R2;
+	Ytemp.V2 = Yold.V2 + h*A21*k1.V2;
+	Ytemp.F2 = Yold.F2 + h*A21*k1.F2;
+	Ytemp.T2 = Yold.T2 + h*A21*k1.T2;
+
+	Ytemp.U3 = Yold.U3 + h*A21*k1.U3;
+	Ytemp.I3 = Yold.I3 + h*A21*k1.I3;
+	Ytemp.R3 = Yold.R3 + h*A21*k1.R3;
+	Ytemp.V3 = Yold.V3 + h*A21*k1.V3;
+	Ytemp.F3 = Yold.F3 + h*A21*k1.F3;
+	Ytemp.T3 = Yold.T3 + h*A21*k1.T3;
+
+	model(idx, pars, pop, Ytemp, &k2);
+    
+	Ytemp.U1 = Yold.U1 + h*(A31*k1.U1 + A32*k2.U1);
+	Ytemp.I1 = Yold.I1 + h*(A31*k1.I1 + A32*k2.I1);
+	Ytemp.R1 = Yold.R1 + h*(A31*k1.R1 + A32*k2.R1);
+	Ytemp.V1 = Yold.V1 + h*(A31*k1.V1 + A32*k2.V1);
+	Ytemp.F1 = Yold.F1 + h*(A31*k1.F1 + A32*k2.F1);
+    
+	Ytemp.U2 = Yold.U2 + h*(A31*k1.U2 + A32*k2.U2);
+	Ytemp.I2 = Yold.I2 + h*(A31*k1.I2 + A32*k2.I2);
+	Ytemp.R2 = Yold.R2 + h*(A31*k1.R2 + A32*k2.R2);
+	Ytemp.V2 = Yold.V2 + h*(A31*k1.V2 + A32*k2.V2);
+	Ytemp.F2 = Yold.F2 + h*(A31*k1.F2 + A32*k2.F2);
+	Ytemp.T2 = Yold.T2 + h*(A31*k1.T2 + A32*k2.T2);
+    
+	Ytemp.U3 = Yold.U3 + h*(A31*k1.U3 + A32*k2.U3);
+	Ytemp.I3 = Yold.I3 + h*(A31*k1.I3 + A32*k2.I3);
+	Ytemp.R3 = Yold.R3 + h*(A31*k1.R3 + A32*k2.R3);
+	Ytemp.V3 = Yold.V3 + h*(A31*k1.V3 + A32*k2.V3);
+	Ytemp.F3 = Yold.F3 + h*(A31*k1.F3 + A32*k2.F3);
+	Ytemp.T3 = Yold.T3 + h*(A31*k1.T3 + A32*k2.T3);
+
+	model(idx, pars, pop, Ytemp, &k3);
+    
+	Ytemp.U1 = Yold.U1 + h*(A41*k1.U1 + A42*k2.U1 + A43*k3.U1);
+	Ytemp.I1 = Yold.I1 + h*(A41*k1.I1 + A42*k2.I1 + A43*k3.I1);
+	Ytemp.R1 = Yold.R1 + h*(A41*k1.R1 + A42*k2.R1 + A43*k3.R1);
+	Ytemp.V1 = Yold.V1 + h*(A41*k1.V1 + A42*k2.V1 + A43*k3.V1);
+	Ytemp.F1 = Yold.F1 + h*(A41*k1.F1 + A42*k2.F1 + A43*k3.F1);
+    
+	Ytemp.U2 = Yold.U2 + h*(A41*k1.U2 + A42*k2.U2 + A43*k3.U2);
+	Ytemp.I2 = Yold.I2 + h*(A41*k1.I2 + A42*k2.I2 + A43*k3.I2);
+	Ytemp.R2 = Yold.R2 + h*(A41*k1.R2 + A42*k2.R2 + A43*k3.R2);
+	Ytemp.V2 = Yold.V2 + h*(A41*k1.V2 + A42*k2.V2 + A43*k3.V2);
+	Ytemp.F2 = Yold.F2 + h*(A41*k1.F2 + A42*k2.F2 + A43*k3.F2);
+	Ytemp.T2 = Yold.T2 + h*(A41*k1.T2 + A42*k2.T2 + A43*k3.T2);
+    
+	Ytemp.U3 = Yold.U3 + h*(A41*k1.U3 + A42*k2.U3 + A43*k3.U3);
+	Ytemp.I3 = Yold.I3 + h*(A41*k1.I3 + A42*k2.I3 + A43*k3.I3);
+	Ytemp.R3 = Yold.R3 + h*(A41*k1.R3 + A42*k2.R3 + A43*k3.R3);
+	Ytemp.V3 = Yold.V3 + h*(A41*k1.V3 + A42*k2.V3 + A43*k3.V3);
+	Ytemp.F3 = Yold.F3 + h*(A41*k1.F3 + A42*k2.F3 + A43*k3.F3);
+	Ytemp.T3 = Yold.T3 + h*(A41*k1.T3 + A42*k2.T3 + A43*k3.T3);
+
+	model(idx, pars, pop, Ytemp, &k4);
+    
+	Ytemp.U1 = Yold.U1 + h*(A51*k1.U1 + A52*k2.U1 + A53*k3.U1 + A54*k4.U1);
+	Ytemp.I1 = Yold.I1 + h*(A51*k1.I1 + A52*k2.I1 + A53*k3.I1 + A54*k4.I1);
+	Ytemp.R1 = Yold.R1 + h*(A51*k1.R1 + A52*k2.R1 + A53*k3.R1 + A54*k4.R1);
+	Ytemp.V1 = Yold.V1 + h*(A51*k1.V1 + A52*k2.V1 + A53*k3.V1 + A54*k4.V1);
+	Ytemp.F1 = Yold.F1 + h*(A51*k1.F1 + A52*k2.F1 + A53*k3.F1 + A54*k4.F1);
+    
+	Ytemp.U2 = Yold.U2 + h*(A51*k1.U2 + A52*k2.U2 + A53*k3.U2 + A54*k4.U2);
+	Ytemp.I2 = Yold.I2 + h*(A51*k1.I2 + A52*k2.I2 + A53*k3.I2 + A54*k4.I2);
+	Ytemp.R2 = Yold.R2 + h*(A51*k1.R2 + A52*k2.R2 + A53*k3.R2 + A54*k4.R2);
+	Ytemp.V2 = Yold.V2 + h*(A51*k1.V2 + A52*k2.V2 + A53*k3.V2 + A54*k4.V2);
+	Ytemp.F2 = Yold.F2 + h*(A51*k1.F2 + A52*k2.F2 + A53*k3.F2 + A54*k4.F2);
+	Ytemp.T2 = Yold.T2 + h*(A51*k1.T2 + A52*k2.T2 + A53*k3.T2 + A54*k4.T2);
+    
+	Ytemp.U3 = Yold.U3 + h*(A51*k1.U3 + A52*k2.U3 + A53*k3.U3 + A54*k4.U3);
+	Ytemp.I3 = Yold.I3 + h*(A51*k1.I3 + A52*k2.I3 + A53*k3.I3 + A54*k4.I3);
+	Ytemp.R3 = Yold.R3 + h*(A51*k1.R3 + A52*k2.R3 + A53*k3.R3 + A54*k4.R3);
+	Ytemp.V3 = Yold.V3 + h*(A51*k1.V3 + A52*k2.V3 + A53*k3.V3 + A54*k4.V3);
+	Ytemp.F3 = Yold.F3 + h*(A51*k1.F3 + A52*k2.F3 + A53*k3.F3 + A54*k4.F3);
+	Ytemp.T3 = Yold.T3 + h*(A51*k1.T3 + A52*k2.T3 + A53*k3.T3 + A54*k4.T3);
+
+	model(idx, pars, pop, Ytemp, &k5);
+    
+	Ytemp.U1 = Yold.U1 + h*(A61*k1.U1 + A62*k2.U1 + A63*k3.U1 + A64*k4.U1 + A65*k5.U1);
+	Ytemp.I1 = Yold.I1 + h*(A61*k1.I1 + A62*k2.I1 + A63*k3.I1 + A64*k4.I1 + A65*k5.I1);
+	Ytemp.R1 = Yold.R1 + h*(A61*k1.R1 + A62*k2.R1 + A63*k3.R1 + A64*k4.R1 + A65*k5.R1);
+	Ytemp.V1 = Yold.V1 + h*(A61*k1.V1 + A62*k2.V1 + A63*k3.V1 + A64*k4.V1 + A65*k5.V1);
+	Ytemp.F1 = Yold.F1 + h*(A61*k1.F1 + A62*k2.F1 + A63*k3.F1 + A64*k4.F1 + A65*k5.F1);
+    
+	Ytemp.U2 = Yold.U2 + h*(A61*k1.U2 + A62*k2.U2 + A63*k3.U2 + A64*k4.U2 + A65*k5.U2);
+	Ytemp.I2 = Yold.I2 + h*(A61*k1.I2 + A62*k2.I2 + A63*k3.I2 + A64*k4.I2 + A65*k5.I2);
+	Ytemp.R2 = Yold.R2 + h*(A61*k1.R2 + A62*k2.R2 + A63*k3.R2 + A64*k4.R2 + A65*k5.R2);
+	Ytemp.V2 = Yold.V2 + h*(A61*k1.V2 + A62*k2.V2 + A63*k3.V2 + A64*k4.V2 + A65*k5.V2);
+	Ytemp.F2 = Yold.F2 + h*(A61*k1.F2 + A62*k2.F2 + A63*k3.F2 + A64*k4.F2 + A65*k5.F2);
+	Ytemp.T2 = Yold.T2 + h*(A61*k1.T2 + A62*k2.T2 + A63*k3.T2 + A64*k4.T2 + A65*k5.T2);
+    
+	Ytemp.U3 = Yold.U3 + h*(A61*k1.U3 + A62*k2.U3 + A63*k3.U3 + A64*k4.U3 + A65*k5.U3);
+	Ytemp.I3 = Yold.I3 + h*(A61*k1.I3 + A62*k2.I3 + A63*k3.I3 + A64*k4.I3 + A65*k5.I3);
+	Ytemp.R3 = Yold.R3 + h*(A61*k1.R3 + A62*k2.R3 + A63*k3.R3 + A64*k4.R3 + A65*k5.R3);
+	Ytemp.V3 = Yold.V3 + h*(A61*k1.V3 + A62*k2.V3 + A63*k3.V3 + A64*k4.V3 + A65*k5.V3);
+	Ytemp.F3 = Yold.F3 + h*(A61*k1.F3 + A62*k2.F3 + A63*k3.F3 + A64*k4.F3 + A65*k5.F3);
+	Ytemp.T3 = Yold.T3 + h*(A61*k1.T3 + A62*k2.T3 + A63*k3.T3 + A64*k4.T3 + A65*k5.T3);
+
+	model(idx, pars, pop, Ytemp, &k6);
+    
+	Y->U1 = Yold.U1 + h*(A71*k1.U1 + A73*k3.U1 + A74*k4.U1 + A75*k5.U1 + A76*k6.U1);
+	Y->I1 = Yold.I1 + h*(A71*k1.I1 + A73*k3.I1 + A74*k4.I1 + A75*k5.I1 + A76*k6.I1);
+	Y->R1 = Yold.R1 + h*(A71*k1.R1 + A73*k3.R1 + A74*k4.R1 + A75*k5.R1 + A76*k6.R1);
+	Y->V1 = Yold.V1 + h*(A71*k1.V1 + A73*k3.V1 + A74*k4.V1 + A75*k5.V1 + A76*k6.V1);
+	Y->F1 = Yold.F1 + h*(A71*k1.F1 + A73*k3.F1 + A74*k4.F1 + A75*k5.F1 + A76*k6.F1);
+    
+	Y->U2 = Yold.U2 + h*(A71*k1.U2 + A73*k3.U2 + A74*k4.U2 + A75*k5.U2 + A76*k6.U2);
+	Y->I2 = Yold.I2 + h*(A71*k1.I2 + A73*k3.I2 + A74*k4.I2 + A75*k5.I2 + A76*k6.I2);
+	Y->R2 = Yold.R2 + h*(A71*k1.R2 + A73*k3.R2 + A74*k4.R2 + A75*k5.R2 + A76*k6.R2);
+	Y->V2 = Yold.V2 + h*(A71*k1.V2 + A73*k3.V2 + A74*k4.V2 + A75*k5.V2 + A76*k6.V2);
+	Y->F2 = Yold.F2 + h*(A71*k1.F2 + A73*k3.F2 + A74*k4.F2 + A75*k5.F2 + A76*k6.F2);
+	Y->T2 = Yold.T2 + h*(A71*k1.T2 + A73*k3.T2 + A74*k4.T2 + A75*k5.T2 + A76*k6.T2);
+    
+	Y->U3 = Yold.U3 + h*(A71*k1.U3 + A73*k3.U3 + A74*k4.U3 + A75*k5.U3 + A76*k6.U3);
+	Y->I3 = Yold.I3 + h*(A71*k1.I3 + A73*k3.I3 + A74*k4.I3 + A75*k5.I3 + A76*k6.I3);
+	Y->R3 = Yold.R3 + h*(A71*k1.R3 + A73*k3.R3 + A74*k4.R3 + A75*k5.R3 + A76*k6.R3);
+	Y->V3 = Yold.V3 + h*(A71*k1.V3 + A73*k3.V3 + A74*k4.V3 + A75*k5.V3 + A76*k6.V3);
+	Y->F3 = Yold.F3 + h*(A71*k1.F3 + A73*k3.F3 + A74*k4.F3 + A75*k5.F3 + A76*k6.F3);
+	Y->T3 = Yold.T3 + h*(A71*k1.T3 + A73*k3.T3 + A74*k4.T3 + A75*k5.T3 + A76*k6.T3);
+
+	return;
+}
+// Hereeeeeeeeeeeeeeeeeeeee
 //-------------------------------------------------------------------------
 __global__ void costFunction(param pars, float *pop, float *timeData, float *dataN, float *dataT, float *dataL,
 		float *timeCD8, float *cd8Data, float *valCostFn)
