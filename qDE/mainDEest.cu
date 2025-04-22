@@ -11,6 +11,7 @@
 #define FLAG \
         fprintf(stderr, "Flag in %s:%d\n", __FILE__, __LINE__);\
 
+// Dormand-Prince coefficients
 #define A21 0.2
 #define A31 0.075
 #define A32 0.225
@@ -427,8 +428,9 @@ __device__ void deriv_step(int idx, param pars, float *pop, comp *Y)
 	return;
 }
 // Hereeeeeeeeeeeeeeeeeeeee
+// Create a new Structure for the data?
 //-------------------------------------------------------------------------
-__global__ void costFunction(param pars, float *pop, float *timeData, float *dataN, float *dataT, float *dataL,
+__global__ void costFunction(param pars, float *pop, float *timeQt_V, float *dataN, float *dataT, float *dataL,
 		float *timeCD8, float *cd8Data, float *valCostFn)
 {
 	int ind;
