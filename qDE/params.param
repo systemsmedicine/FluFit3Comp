@@ -6,19 +6,19 @@
 12345		# Seed for random numbers
 
 ### Initial conditions for ODE solve
-0.0		# Initial time
-12.0	# Final time
-0.05	# Step time
+0.0			# Initial time
+12.0		# Final time
+0.05		# Step time
 
 ### Parameters to estimate (ranges)
-39		# Number of parmeters to estimate
-0       # Resampling for bootstrap?
-0       # Include qualitative fit?
+39			# Number of parmeters to estimate
+0       	# Resampling for bootstrap?
+0       	# Include qualitative fit?
 
 # Limits [Lower : Upper]
-[3 : 6]			# V(t=0) (in log10 scale)
-[1e-8 : 1e-4]	# beta1 
-[0 : 0]			# xi1
+[2 : 4.5]		# V(t=0) (in log10 scale)
+[-8 : -4]		# beta1 
+[-8 : -4]		# xi1
 [0 : 0]			# chi1
 [1e-2 : 1e1]	# delta1
 [1e-2 : 1e-2]	# rho1
