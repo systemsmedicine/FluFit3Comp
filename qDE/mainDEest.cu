@@ -61,6 +61,24 @@ comp;
 
 typedef struct 
 {
+	float time;
+	float V1;
+	float V2;
+	float V3;
+} 
+viralData;
+
+typedef struct
+{
+	float minTime;
+	float maxTime;
+	float minValue;
+	float maxValue;
+}
+window;
+
+typedef struct 
+{
 	float U10;
 	float I10;
 	float R10;
@@ -132,8 +150,9 @@ typedef struct
 	int D;
 	int Np;
 	int nData;
-	int nDataCD8;
-	int flag8;
+	int qnData2;
+	int qnData3;
+	int qFlag;
 	int sizeSample;
 } 
 param;
@@ -430,284 +449,167 @@ __device__ void deriv_step(int idx, param pars, float *pop, comp *Y)
 // Hereeeeeeeeeeeeeeeeeeeee
 // Create a new Structure for the data?
 //-------------------------------------------------------------------------
-__global__ void costFunction(param pars, float *pop, float *timeQt_V, float *dataN, float *dataT, float *dataL,
-		float *timeCD8, float *cd8Data, float *valCostFn)
+__global__ void costFunction(param pars, float *pop, viralData *Vdata,
+							 window *Twindows2, window *Twindows3, float *costFn)
 {
-	int ind;
-
-	ind = threadIdx.x + blockIdx.x*blockDim.x;
+	int ind = threadIdx.x + blockIdx.x*blockDim.x;
 	if (ind >= pars.Np) return;
 
-	int idx;
-	float t0, tN, tt;
-	comp Y, dotY;
+	int penaltyFlag = 0;
+	int rssFlag = 1;
+	int qFlag2 = pars.qFlag;
+	int qFlag3 = pars.qFlag;
+	int nn = 0, qnn2 = 0, qnn3 = 0;
+	int nData = pars.nData;
+	int qnData2 = pars.qnData2;
+	int qnData3 = pars.qnData3;
 
-	idx = ind*pars.D;
-	t0 = pars.t0;
-	tN = pars.tN;
+	float aux, sum2 = 0.0f;
+	viralData qtData = Vdata[0];
+	window qlWindow2 = Twindows2[0];
+	window qlWindow3 = Twindows3[0];
+
+	comp Y;
+	int idx = ind*pars.D;
+	float t = pars.t0;
+	float h = pars.dt;
 
 	// Initial values
 	Y.U1 = pars.U10;
 	Y.I1 = pars.I10;
 	Y.R1 = pars.R10;
 	Y.V1 = pow(10, pop[idx]); // V10
-	//Y.F1 = pars.F10;
+	Y.F1 = pars.F10;
 
 	Y.U2 = pars.U20;
 	Y.I2 = pars.I20;
 	Y.R2 = pars.R20;
 	Y.V2 = pars.V20;
-	//Y.F2 = pars.F20;
+	Y.F2 = pars.F20;
 	Y.T2 = pars.T20;
 
 	Y.U3 = pars.U30;
 	Y.I3 = pars.I30;
 	Y.R3 = pars.R30;
 	Y.V3 = pars.V30;
-	//Y.F3 = pars.F30;
+	Y.F3 = pars.F30;
 	Y.T3 = pars.T30;
 
-	derivs(idx, pars, pop, Y, &dotY);
-
-	// ODE solver (5th-order Dormand-Prince)
-
-	comp ytemp, k2, k3, k4, k5, k6, dotYnew, yOut;
-	float aux;
-	int nn, nn8;
-	float h;
-
-	float ttData, sum2, ttCD8; 
-	float meanN, meanT, meanL, mean8;
-	int nData, nDataCD8, sizeSample, ii, idxData;
-	short nanFlag, flag, flag8;
-
-	tt = t0;
-	h = pars.dt;
-
-	nn = 0;
-	nn8 = 0;
-	ttData = timeData[0];
-	ttCD8 = timeCD8[0];
-	sum2 = 0.0;
-	nData = pars.nData;
-	nDataCD8 = pars.nDataCD8;
-	sizeSample = pars.sizeSample;
-	flag = 0;
-	flag8 = pars.flag8 == 0 ? 1 : 0; // If flag8 is off, then set up to 1 to skip it
-
-	do
+	while (t <= pars.tN)
 	{
-		ytemp.U1 = Y.U1 + h*A21*dotY.U1;
-		ytemp.I1 = Y.I1 + h*A21*dotY.I1;
-		ytemp.R1 = Y.R1 + h*A21*dotY.R1;
-		ytemp.V1 = Y.V1 + h*A21*dotY.V1;
-		//ytemp.F1 = Y.F1 + h*A21*dotY.F1;
+		// Dormand-Prince method to compute the next state
+		deriv_step(idx, pars, pop, &Y);
+		t += h;
 
-		ytemp.U2 = Y.U2 + h*A21*dotY.U2;
-		ytemp.I2 = Y.I2 + h*A21*dotY.I2;
-		ytemp.R2 = Y.R2 + h*A21*dotY.R2;
-		ytemp.V2 = Y.V2 + h*A21*dotY.V2;
-		//ytemp.F2 = Y.F2 + h*A21*dotY.F2;
-		ytemp.T2 = Y.T2 + h*A21*dotY.T2;
-
-		ytemp.U3 = Y.U3 + h*A21*dotY.U3;
-		ytemp.I3 = Y.I3 + h*A21*dotY.I3;
-		ytemp.R3 = Y.R3 + h*A21*dotY.R3;
-		ytemp.V3 = Y.V3 + h*A21*dotY.V3;
-		//ytemp.F3 = Y.F3 + h*A21*dotY.F3;
-		ytemp.T3 = Y.T3 + h*A21*dotY.T3;
-
-		derivs(idx, pars, pop, ytemp, &k2);
-
-		ytemp.U1 = Y.U1 + h*(A31*dotY.U1 + A32*k2.U1);
-		ytemp.I1 = Y.I1 + h*(A31*dotY.I1 + A32*k2.I1);
-		ytemp.R1 = Y.R1 + h*(A31*dotY.R1 + A32*k2.R1);
-		ytemp.V1 = Y.V1 + h*(A31*dotY.V1 + A32*k2.V1);
-		//ytemp.F1 = Y.F1 + h*(A31*dotY.F1 + A32*k2.F1);
-
-		ytemp.U2 = Y.U2 + h*(A31*dotY.U2 + A32*k2.U2);
-		ytemp.I2 = Y.I2 + h*(A31*dotY.I2 + A32*k2.I2);
-		ytemp.R2 = Y.R2 + h*(A31*dotY.R2 + A32*k2.R2);
-		ytemp.V2 = Y.V2 + h*(A31*dotY.V2 + A32*k2.V2);
-		//ytemp.F2 = Y.F2 + h*(A31*dotY.F2 + A32*k2.F2);
-		ytemp.T2 = Y.T2 + h*(A31*dotY.T2 + A32*k2.T2);
-
-		ytemp.U3 = Y.U3 + h*(A31*dotY.U3 + A32*k2.U3);
-		ytemp.I3 = Y.I3 + h*(A31*dotY.I3 + A32*k2.I3);
-		ytemp.R3 = Y.R3 + h*(A31*dotY.R3 + A32*k2.R3);
-		ytemp.V3 = Y.V3 + h*(A31*dotY.V3 + A32*k2.V3);
-		//ytemp.F3 = Y.F3 + h*(A31*dotY.F3 + A32*k2.F3);
-		ytemp.T3 = Y.T3 + h*(A31*dotY.T3 + A32*k2.T3);
-
-		derivs(idx, pars, pop, ytemp, &k3);
-
-		ytemp.U1 = Y.U1 + h*(A41*dotY.U1 + A42*k2.U1 + A43*k3.U1);
-		ytemp.I1 = Y.I1 + h*(A41*dotY.I1 + A42*k2.I1 + A43*k3.I1);
-		ytemp.R1 = Y.R1 + h*(A41*dotY.R1 + A42*k2.R1 + A43*k3.R1);
-		ytemp.V1 = Y.V1 + h*(A41*dotY.V1 + A42*k2.V1 + A43*k3.V1);
-		//ytemp.F1 = Y.F1 + h*(A41*dotY.F1 + A42*k2.F1 + A43*k3.F1);
-
-		ytemp.U2 = Y.U2 + h*(A41*dotY.U2 + A42*k2.U2 + A43*k3.U2);
-		ytemp.I2 = Y.I2 + h*(A41*dotY.I2 + A42*k2.I2 + A43*k3.I2);
-		ytemp.R2 = Y.R2 + h*(A41*dotY.R2 + A42*k2.R2 + A43*k3.R2);
-		ytemp.V2 = Y.V2 + h*(A41*dotY.V2 + A42*k2.V2 + A43*k3.V2);
-		//ytemp.F2 = Y.F2 + h*(A41*dotY.F2 + A42*k2.F2 + A43*k3.F2);
-		ytemp.T2 = Y.T2 + h*(A41*dotY.T2 + A42*k2.T2 + A43*k3.T2);
-
-		ytemp.U3 = Y.U3 + h*(A41*dotY.U3 + A42*k2.U3 + A43*k3.U3);
-		ytemp.I3 = Y.I3 + h*(A41*dotY.I3 + A42*k2.I3 + A43*k3.I3);
-		ytemp.R3 = Y.R3 + h*(A41*dotY.R3 + A42*k2.R3 + A43*k3.R3);
-		ytemp.V3 = Y.V3 + h*(A41*dotY.V3 + A42*k2.V3 + A43*k3.V3);
-		//ytemp.F3 = Y.F3 + h*(A41*dotY.F3 + A42*k2.F3 + A43*k3.F3);
-		ytemp.T3 = Y.T3 + h*(A41*dotY.T3 + A42*k2.T3 + A43*k3.T3);
-
-		derivs(idx, pars, pop, ytemp, &k4);
-
-		ytemp.U1 = Y.U1 + h*(A51*dotY.U1 + A52*k2.U1 + A53*k3.U1 + A54*k4.U1);
-		ytemp.I1 = Y.I1 + h*(A51*dotY.I1 + A52*k2.I1 + A53*k3.I1 + A54*k4.I1);
-		ytemp.R1 = Y.R1 + h*(A51*dotY.R1 + A52*k2.R1 + A53*k3.R1 + A54*k4.R1);
-		ytemp.V1 = Y.V1 + h*(A51*dotY.V1 + A52*k2.V1 + A53*k3.V1 + A54*k4.V1);
-		//ytemp.F1 = Y.F1 + h*(A51*dotY.F1 + A52*k2.F1 + A53*k3.F1 + A54*k4.F1);
-
-		ytemp.U2 = Y.U2 + h*(A51*dotY.U2 + A52*k2.U2 + A53*k3.U2 + A54*k4.U2);
-		ytemp.I2 = Y.I2 + h*(A51*dotY.I2 + A52*k2.I2 + A53*k3.I2 + A54*k4.I2);
-		ytemp.R2 = Y.R2 + h*(A51*dotY.R2 + A52*k2.R2 + A53*k3.R2 + A54*k4.R2);
-		ytemp.V2 = Y.V2 + h*(A51*dotY.V2 + A52*k2.V2 + A53*k3.V2 + A54*k4.V2);
-		//ytemp.F2 = Y.F2 + h*(A51*dotY.F2 + A52*k2.F2 + A53*k3.F2 + A54*k4.F2);
-		ytemp.T2 = Y.T2 + h*(A51*dotY.T2 + A52*k2.T2 + A53*k3.T2 + A54*k4.T2);
-
-		ytemp.U3 = Y.U3 + h*(A51*dotY.U3 + A52*k2.U3 + A53*k3.U3 + A54*k4.U3);
-		ytemp.I3 = Y.I3 + h*(A51*dotY.I3 + A52*k2.I3 + A53*k3.I3 + A54*k4.I3);
-		ytemp.R3 = Y.R3 + h*(A51*dotY.R3 + A52*k2.R3 + A53*k3.R3 + A54*k4.R3);
-		ytemp.V3 = Y.V3 + h*(A51*dotY.V3 + A52*k2.V3 + A53*k3.V3 + A54*k4.V3);
-		//ytemp.F3 = Y.F3 + h*(A51*dotY.F3 + A52*k2.F3 + A53*k3.F3 + A54*k4.F3);
-		ytemp.T3 = Y.T3 + h*(A51*dotY.T3 + A52*k2.T3 + A53*k3.T3 + A54*k4.T3);
-
-		derivs(idx, pars, pop, ytemp, &k5);
-
-		ytemp.U1 = Y.U1 + h*(A61*dotY.U1 + A62*k2.U1 + A63*k3.U1 + A64*k4.U1 + A65*k5.U1);
-		ytemp.I1 = Y.I1 + h*(A61*dotY.I1 + A62*k2.I1 + A63*k3.I1 + A64*k4.I1 + A65*k5.I1);
-		ytemp.R1 = Y.R1 + h*(A61*dotY.R1 + A62*k2.R1 + A63*k3.R1 + A64*k4.R1 + A65*k5.R1);
-		ytemp.V1 = Y.V1 + h*(A61*dotY.V1 + A62*k2.V1 + A63*k3.V1 + A64*k4.V1 + A65*k5.V1);
-		//ytemp.F1 = Y.F1 + h*(A61*dotY.F1 + A62*k2.F1 + A63*k3.F1 + A64*k4.F1 + A65*k5.F1);
-
-		ytemp.U2 = Y.U2 + h*(A61*dotY.U2 + A62*k2.U2 + A63*k3.U2 + A64*k4.U2 + A65*k5.U2);
-		ytemp.I2 = Y.I2 + h*(A61*dotY.I2 + A62*k2.I2 + A63*k3.I2 + A64*k4.I2 + A65*k5.I2);
-		ytemp.R2 = Y.R2 + h*(A61*dotY.R2 + A62*k2.R2 + A63*k3.R2 + A64*k4.R2 + A65*k5.R2);
-		ytemp.V2 = Y.V2 + h*(A61*dotY.V2 + A62*k2.V2 + A63*k3.V2 + A64*k4.V2 + A65*k5.V2);
-		//ytemp.F2 = Y.F2 + h*(A61*dotY.F2 + A62*k2.F2 + A63*k3.F2 + A64*k4.F2 + A65*k5.F2);
-		ytemp.T2 = Y.T2 + h*(A61*dotY.T2 + A62*k2.T2 + A63*k3.T2 + A64*k4.T2 + A65*k5.T2);
-
-		ytemp.U3 = Y.U3 + h*(A61*dotY.U3 + A62*k2.U3 + A63*k3.U3 + A64*k4.U3 + A65*k5.U3);
-		ytemp.I3 = Y.I3 + h*(A61*dotY.I3 + A62*k2.I3 + A63*k3.I3 + A64*k4.I3 + A65*k5.I3);
-		ytemp.R3 = Y.R3 + h*(A61*dotY.R3 + A62*k2.R3 + A63*k3.R3 + A64*k4.R3 + A65*k5.R3);
-		ytemp.V3 = Y.V3 + h*(A61*dotY.V3 + A62*k2.V3 + A63*k3.V3 + A64*k4.V3 + A65*k5.V3);
-		//ytemp.F3 = Y.F3 + h*(A61*dotY.F3 + A62*k2.F3 + A63*k3.F3 + A64*k4.F3 + A65*k5.F3);
-		ytemp.T3 = Y.T3 + h*(A61*dotY.T3 + A62*k2.T3 + A63*k3.T3 + A64*k4.T3 + A65*k5.T3);
-
-		derivs(idx, pars, pop, ytemp, &k6);
-
-		yOut.U1 = Y.U1 + h*(A71*dotY.U1 + A73*k3.U1 + A74*k4.U1 + A75*k5.U1 + A76*k6.U1);
-		yOut.I1 = Y.I1 + h*(A71*dotY.I1 + A73*k3.I1 + A74*k4.I1 + A75*k5.I1 + A76*k6.I1);
-		yOut.R1 = Y.R1 + h*(A71*dotY.R1 + A73*k3.R1 + A74*k4.R1 + A75*k5.R1 + A76*k6.R1);
-		yOut.V1 = Y.V1 + h*(A71*dotY.V1 + A73*k3.V1 + A74*k4.V1 + A75*k5.V1 + A76*k6.V1);
-		//yOut.F1 = Y.F1 + h*(A71*dotY.F1 + A73*k3.F1 + A74*k4.F1 + A75*k5.F1 + A76*k6.F1);
-
-		yOut.U2 = Y.U2 + h*(A71*dotY.U2 + A73*k3.U2 + A74*k4.U2 + A75*k5.U2 + A76*k6.U2);
-		yOut.I2 = Y.I2 + h*(A71*dotY.I2 + A73*k3.I2 + A74*k4.I2 + A75*k5.I2 + A76*k6.I2);
-		yOut.R2 = Y.R2 + h*(A71*dotY.R2 + A73*k3.R2 + A74*k4.R2 + A75*k5.R2 + A76*k6.R2);
-		yOut.V2 = Y.V2 + h*(A71*dotY.V2 + A73*k3.V2 + A74*k4.V2 + A75*k5.V2 + A76*k6.V2);
-		//yOut.F2 = Y.F2 + h*(A71*dotY.F2 + A73*k3.F2 + A74*k4.F2 + A75*k5.F2 + A76*k6.F2);
-		yOut.T2 = Y.T2 + h*(A71*dotY.T2 + A73*k3.T2 + A74*k4.T2 + A75*k5.T2 + A76*k6.T2);
-
-		yOut.U3 = Y.U3 + h*(A71*dotY.U3 + A73*k3.U3 + A74*k4.U3 + A75*k5.U3 + A76*k6.U3);
-		yOut.I3 = Y.I3 + h*(A71*dotY.I3 + A73*k3.I3 + A74*k4.I3 + A75*k5.I3 + A76*k6.I3);
-		yOut.R3 = Y.R3 + h*(A71*dotY.R3 + A73*k3.R3 + A74*k4.R3 + A75*k5.R3 + A76*k6.R3);
-		yOut.V3 = Y.V3 + h*(A71*dotY.V3 + A73*k3.V3 + A74*k4.V3 + A75*k5.V3 + A76*k6.V3);
-		//yOut.F3 = Y.F3 + h*(A71*dotY.F3 + A73*k3.F3 + A74*k4.F3 + A75*k5.F3 + A76*k6.F3);
-		yOut.T3 = Y.T3 + h*(A71*dotY.T3 + A73*k3.T3 + A74*k4.T3 + A75*k5.T3 + A76*k6.T3);
-
-		derivs(idx, pars, pop, yOut, &dotYnew);
-
-		nanFlag = 0;
-		if (isnan(yOut.U1)) nanFlag = 1;
-		if (isnan(yOut.I1)) nanFlag = 1;
-		if (isnan(yOut.R1)) nanFlag = 1;
-		if (isnan(yOut.V1)) nanFlag = 1;
-		//if (isnan(yOut.F1)) nanFlag = 1;
-
-		if (isnan(yOut.U2)) nanFlag = 1;
-		if (isnan(yOut.I2)) nanFlag = 1;
-		if (isnan(yOut.R2)) nanFlag = 1;
-		if (isnan(yOut.V2)) nanFlag = 1;
-		//if (isnan(yOut.F2)) nanFlag = 1;
-		if (isnan(yOut.T2)) nanFlag = 1;
-
-		if (isnan(yOut.U3)) nanFlag = 1;
-		if (isnan(yOut.I3)) nanFlag = 1;
-		if (isnan(yOut.R3)) nanFlag = 1;
-		if (isnan(yOut.V3)) nanFlag = 1;
-		//if (isnan(yOut.F3)) nanFlag = 1;
-		if (isnan(yOut.T3)) nanFlag = 1;
-		if (nanFlag) break;
-
-	        if (yOut.V1 < 0.0) yOut.V1 = 0.0;
-	        if (yOut.V2 < 0.0) yOut.V2 = 0.0;
-	        if (yOut.V3 < 0.0) yOut.V3 = 0.0;
-
-		tt += h;
-
-		// This part calculates the RMS
-		if (tt > ttData && !flag)
+		// Check for NaN and INF values
+		if (isnan(Y.U1) || isnan(Y.U2) || isnan(Y.U3) ||
+			isnan(Y.I1) || isnan(Y.I2) || isnan(Y.I3) ||
+			isnan(Y.R1) || isnan(Y.R2) || isnan(Y.R3) ||
+			isnan(Y.V1) || isnan(Y.V2) || isnan(Y.V3) ||
+			isnan(Y.F1) || isnan(Y.F2) || isnan(Y.F3) ||
+					isnan(Y.T2) || isnan(Y.T3) ||
+			isinf(Y.U1) || isinf(Y.U2) || isinf(Y.U3) ||
+			isinf(Y.I1) || isinf(Y.I2) || isinf(Y.I3) ||
+			isinf(Y.R1) || isinf(Y.R2) || isinf(Y.R3) ||
+			isinf(Y.V1) || isinf(Y.V2) || isinf(Y.V3) ||
+			isinf(Y.F1) || isinf(Y.F2) || isinf(Y.F3) ||
+						   isinf(Y.T2) || isinf(Y.T3) )
 		{
-			meanN = yOut.V1 < 1.0 ? 0.0 : log10(yOut.V1);
-			meanT = yOut.V2 < 1.0 ? 0.0 : log10(yOut.V2);
-			meanL = yOut.V3 < 1.0 ? 0.0 : log10(yOut.V3);
-
-			for (ii=0; ii<sizeSample; ii++)
-			{
-				idxData = ii + nn*sizeSample;
-				aux = dataN[idxData] - meanN;
-				sum2 += aux*aux;
-				aux = dataT[idxData] - meanT;
-				sum2 += aux*aux;
-				aux = dataL[idxData] - meanL;
-				sum2 += aux*aux;
-			}
-
-			nn++;
-			if (nn >= nData) flag = 1;
-			if (!flag) ttData = timeData[nn];
+			penaltyFlag = 1;
+			break;
 		}
 
-		// This part calculates the qualitative part
-		if (tt > ttCD8 - 0.5 && !flag8)
+		if (Y.U1 < 0.0) Y.U1 = 0.0;
+		if (Y.I1 < 0.0) Y.I1 = 0.0;
+		if (Y.R1 < 0.0) Y.R1 = 0.0;
+		if (Y.V1 < 0.0) Y.V1 = 0.0;
+		if (Y.F1 < 0.0) Y.F1 = 0.0;
+
+		if (Y.U2 < 0.0) Y.U2 = 0.0;
+		if (Y.I2 < 0.0) Y.I2 = 0.0;
+		if (Y.R2 < 0.0) Y.R2 = 0.0;
+		if (Y.V2 < 0.0) Y.V2 = 0.0;
+		if (Y.F2 < 0.0) Y.F2 = 0.0;
+		if (Y.T2 < 0.0) Y.T2 = 0.0;
+
+		if (Y.U3 < 0.0) Y.U3 = 0.0;
+		if (Y.I3 < 0.0) Y.I3 = 0.0;
+		if (Y.R3 < 0.0) Y.R3 = 0.0;
+		if (Y.V3 < 0.0) Y.V3 = 0.0;
+		if (Y.F3 < 0.0) Y.F3 = 0.0;
+		if (Y.T3 < 0.0) Y.T3 = 0.0;
+
+		// This part calculates the quantitative RSS
+		if (t >= qtData.time && rssFlag)
 		{
-			mean8 = yOut.T3 < 1.0 ? 0.0 : log10(yOut.T3);
-			aux = cd8Data[nn8] - mean8;
-			if (aux < 0.0) aux *= -1;
-			if (aux > 0.25)
+			while (1)
 			{
-				nanFlag = 1;
+				aux = Y.V1 < 1.0 ? 0.0 : log10(Y.V1);
+				aux -= qtData.V1;
+				sum2 += aux*aux;
+
+				aux = Y.V2 < 1.0 ? 0.0 : log10(Y.V2);
+				aux -= qtData.V1;
+				sum2 += aux*aux;
+
+				aux = Y.V3 < 1.0 ? 0.0 : log10(Y.V3);
+				aux -= qtData.V3;
+				sum2 += aux*aux;
+
+				nn++;
+
+				if (nn >= nData)
+				{
+					rssFlag = 0;
+					break;
+				}
+
+				if (Vdata[nn].time != qtData.time)
+				{
+					qtData = Vdata[nn];
+					break;
+				}
+			}
+		}
+
+		// This part define the penalties according to the window constraints
+		// TRACHEA
+		if (t > qlWindow2.minTime && qFlag2)
+		{
+			if (Y.T2 > qlWindow2.minValue && Y.T2 < qlWindow2.maxValue)
+			{
+				qnn2++;
+				if (qnn2 >= qnData2) qFlag2 = 0;
+				else qlWindow2 = Twindows2[qnn2];
+			}
+			else if (t > qlWindow2.maxTime)
+			{
+				penaltyFlag = 1;
 				break;
 			}
-			
-			if (tt >= ttCD8 + 0.5)
+		}
+
+		// LUNGS
+		if (t > qlWindow3.minTime && qFlag3)
+		{
+			if (Y.T3 > qlWindow3.minValue && Y.T3 < qlWindow3.maxValue)
 			{
-				nn8++;
-				if (nn8 >= nDataCD8) flag8 = 1;
-				if (!flag8) ttCD8 = timeCD8[nn8];
+				qnn3++;
+				if (qnn3 >= qnData3) qFlag3 = 0;
+				else qlWindow3 = Twindows3[qnn3];
+			}
+			else if (t > qlWindow3.maxTime)
+			{
+				penaltyFlag = 1;
+				break;
 			}
 		}
 
-		if (flag && flag8) break;
-
-		dotY = dotYnew;
-		Y = yOut;
+		if (!rssFlag && !qFlag2 && !qFlag3) break;
 	}
-	while (tt <= tN);
 
-	valCostFn[ind] = nanFlag ? 1e10 : sqrt(sum2/(nData*sizeSample));
+	if (isinf(sum2)) penaltyFlag = 1;
+	costFn[ind] = penaltyFlag ? 1e38 : sum2;
 
 	return;
 }
@@ -717,7 +619,7 @@ __global__ void costFunction(param pars, float *pop, float *timeQt_V, float *dat
 __global__ void newPopulation(int Np, int D, float Cr, float Fm, float *randUni,
 int3 *iiMut, float *lowerLim, float *upperLim, float *pop, float *newPop)
 {
-	int ind, jj, idx, flag = 0;
+	int ind, jj, idx, auxInt, flag = 0;
 	int3 iiM, idxM;
 	float trial, auxL, auxU;
 
@@ -744,8 +646,11 @@ int3 *iiMut, float *lowerLim, float *upperLim, float *pop, float *newPop)
 
 		if (randUni[idx] <= Cr)
 		{
-			//trial = pop[idxM.x] + Fm*(pop[idxM.y] - pop[idxM.z]);
-			trial = pop[idx] + Fm*(pop[idxM.x] - pop[idx]) + Fm*(pop[idxM.y] - pop[idxM.z]);
+			// DE/rand/1 || DE/best/1
+			trial = pop[idxM.x] + Fm*(pop[idxM.y] - pop[idxM.z]);
+    		// DE/current-to-best/1
+			//trial = pop[idx] + Fm*(pop[idxM.x] - pop[idx]) + Fm*(pop[idxM.y] - pop[idxM.z]);
+
 			if (trial < auxL) trial = auxL;
 			if (trial > auxU) trial = auxU;
 
@@ -755,13 +660,14 @@ int3 *iiMut, float *lowerLim, float *upperLim, float *pop, float *newPop)
 		else newPop[idx] = pop[idx];
 	}
 
-	// Se asegura que exista al menos un elemento
-	// del vector mutante en la nueva población
+	// Ensure there be at least one element
+	// of the mutant vector in the new population
 	if (!flag)
 	{
+		auxInt = ind*D;
 		while (1)
 		{
-			jj = int(D*randUni[ind]);
+			jj = int(D*randUni[auxInt%(Np*D)]);
 			if (jj == D) jj--;
 			auxL = lowerLim[jj];
 			auxU = upperLim[jj];
@@ -774,8 +680,11 @@ int3 *iiMut, float *lowerLim, float *upperLim, float *pop, float *newPop)
 		idxM.y = iiM.y*D + jj;
 		idxM.z = iiM.z*D + jj;
 
-		//trial = pop[idxM.x] + Fm*(pop[idxM.y] - pop[idxM.z]);
-		trial = pop[idx] + Fm*(pop[idxM.x] - pop[idx]) + Fm*(pop[idxM.y] - pop[idxM.z]);
+		// DE/rand/1 || DE/best/1
+		trial = pop[idxM.x] + Fm*(pop[idxM.y] - pop[idxM.z]);
+    	// DE/current-to-best/1
+		//trial = pop[idx] + Fm*(pop[idxM.x] - pop[idx]) + Fm*(pop[idxM.y] - pop[idxM.z]);
+
 		if (trial < auxL) trial = auxL;
 		if (trial > auxU) trial = auxU;
 
@@ -788,21 +697,21 @@ int3 *iiMut, float *lowerLim, float *upperLim, float *pop, float *newPop)
 //-------------------------------------------------------------------------------
 
 __global__ void selection(int Np, int D, float *pop, float *newPop,
-float *valCostFn, float *newValCostFn)
+float *costFn, float *newCostFn)
 {
 	int ind, jj, idx;
 
 	ind = threadIdx.x + blockIdx.x*blockDim.x;
 	if (ind >= Np) return;
 
-	if  (newValCostFn[ind] > valCostFn[ind]) return;
+	if  (newCostFn[ind] > costFn[ind]) return;
 
 	for (jj=0; jj<D; jj++)
 	{
 		idx = ind*D + jj;
 		pop[idx] = newPop[idx];
 	}
-	valCostFn[ind] = newValCostFn[ind];
+	costFn[ind] = newCostFn[ind];
 
 	return;
 }
@@ -811,15 +720,14 @@ float *valCostFn, float *newValCostFn)
 
 int main()
 {
-	/*+*+*+*+*+ START TO FETCH DATA	+*+*+*+*+*/
-	int nData, nDataCD8, nn;
-	float auxfloat;
-	float *timeData, *meanN, *stdN, *meanT, *stdT, *meanL, *stdL;
-	float *timeCD8, *cd8Data;
+	/*+*+*+*+*+ FETCH DATA	+*+*+*+*+*/
 	char renglon[200], dirData[500], *linea;
 	FILE *fileRead;
+	int nData, nn;
+	float auxfloat;
+	float *timeData, *meanN, *stdN, *meanT, *stdT, *meanL, *stdL;
 
-	sprintf(dirData, "data/viral_load.csv");
+	sprintf(dirData, "viral_load.csv");
 	fileRead = fopen(dirData, "r");
 
 	nData = 0;
@@ -828,16 +736,16 @@ int main()
 		if (fgets(renglon, sizeof(renglon), fileRead) == NULL) break;
 		nData++;
 	}
-	fclose(fileRead);
+	rewind(fileRead);
 
 	if (nData == 0)
 	{
-		printf("Error: no hay datos\n");
+		printf("Error: Empty file in %s\n", dirData);
 		exit (1);
 	}
-	nData--;
+	nData--; //Because the header line
 
-	cudaMallocManaged(&timeData, nData*sizeof(float));
+	timeData = (float *) malloc(nData*sizeof(float));
 	meanN = (float *) malloc(nData*sizeof(float));
 	stdN = (float *) malloc(nData*sizeof(float));
 	meanT = (float *) malloc(nData*sizeof(float));
@@ -845,7 +753,7 @@ int main()
 	meanL = (float *) malloc(nData*sizeof(float));
 	stdL = (float *) malloc(nData*sizeof(float));
 
-	fileRead = fopen(dirData, "r");
+	// Discard first line (header)
 	if (fgets(renglon, sizeof(renglon), fileRead) == NULL) exit (1);
 
 	nn = 0;
@@ -885,28 +793,32 @@ int main()
 	}
 	fclose(fileRead);
 
-	sprintf(dirData, "data/cd8_h3n2.csv");
+	// Read qualitative constraints
+	// TRACHEA
+	int qnData2;
+	window *Twindows2;
+
+	sprintf(dirData, "cd8_h3n2_T.csv");
 	fileRead = fopen(dirData, "r");
 
-	nDataCD8 = 0;
+	qnData2 = 0;
 	while (1)
 	{
 		if (fgets(renglon, sizeof(renglon), fileRead) == NULL) break;
-		nDataCD8++;
+		qnData2++;
 	}
-	fclose(fileRead);
+	rewind(fileRead);
 
-	if (nDataCD8 == 0)
+	if (qnData2 == 0)
 	{
-		printf("Error: no hay datos de CD8\n");
+		printf("Error: Empty file in %s\n", dirData);
 		exit (1);
 	}
-	nDataCD8--;
+	qnData2--; // Header
 
-	cudaMallocManaged(&timeCD8, nDataCD8*sizeof(float));
-	cudaMallocManaged(&cd8Data, nDataCD8*sizeof(float));
+	cudaMallocManaged(&Twindows2, qnData2*sizeof(window));
 
-	fileRead = fopen(dirData, "r");
+	// Discard first line (header)
 	if (fgets(renglon, sizeof(renglon), fileRead) == NULL) exit (1);
 
 	nn = 0;
@@ -916,51 +828,113 @@ int main()
 
 		linea = strtok(renglon, ",");
 		sscanf(linea, "%f", &auxfloat);
-		timeCD8[nn] = auxfloat;
+		Twindows2[nn].minTime = auxfloat;
 
 		linea = strtok(NULL, ",");
 		sscanf(linea, "%f", &auxfloat);
-		cd8Data[nn] = log10(auxfloat);
+		Twindows2[nn].maxTime = auxfloat;
+
+		linea = strtok(NULL, ",");
+		sscanf(linea, "%f", &auxfloat);
+		Twindows2[nn].minValue = auxfloat;
+
+		linea = strtok(NULL, ",");
+		sscanf(linea, "%f", &auxfloat);
+		Twindows2[nn].maxValue = auxfloat;
 
 		nn++;
 	}
 	fclose(fileRead);
 
-    	/*+*+*+*+*+ DIFERENTIAL EVOLUTION +*+*+*+*+*/
-	int Np, itMax, seed, D, flag8;
+	// LUNGS
+	int qnData3;
+	window *Twindows3;
+
+	sprintf(dirData, "cd8_h3n2_L.csv");
+	fileRead = fopen(dirData, "r");
+
+	qnData3 = 0;
+	while (1)
+	{
+		if (fgets(renglon, sizeof(renglon), fileRead) == NULL) break;
+		qnData3++;
+	}
+	rewind(fileRead);
+
+	if (qnData3 == 0)
+	{
+		printf("Error: Empty file in %s\n", dirData);
+		exit (1);
+	}
+	qnData3--; // Header
+
+	cudaMallocManaged(&Twindows3, qnData3*sizeof(window));
+
+	// Discard first line (header)
+	if (fgets(renglon, sizeof(renglon), fileRead) == NULL) exit (1);
+
+	nn = 0;
+	while (1)
+	{
+		if (fgets(renglon, sizeof(renglon), fileRead) == NULL) break;
+
+		linea = strtok(renglon, ",");
+		sscanf(linea, "%f", &auxfloat);
+		Twindows3[nn].minTime = auxfloat;
+
+		linea = strtok(NULL, ",");
+		sscanf(linea, "%f", &auxfloat);
+		Twindows3[nn].maxTime = auxfloat;
+
+		linea = strtok(NULL, ",");
+		sscanf(linea, "%f", &auxfloat);
+		Twindows3[nn].minValue = auxfloat;
+
+		linea = strtok(NULL, ",");
+		sscanf(linea, "%f", &auxfloat);
+		Twindows3[nn].maxValue = auxfloat;
+
+		nn++;
+	}
+	fclose(fileRead);
+
+	/*+*+*+*+*+ FETCH PARAMETERS +*+*+*+*+*/
+	int Np, itMax, seed, D, bootFlag, qFlag;
 	float Fm, Cr, t0, tN, dt;
 	int err_flag = 0;
 
 	if (fgets(renglon, sizeof(renglon), stdin) == NULL) err_flag = 1;
 
-	// Tamaño de la población
+	/* DE parameters */
+	// Population of parameter vector
 	if (fgets(renglon, sizeof(renglon), stdin) == NULL) err_flag = 1;
 	else sscanf(renglon, "%d", &Np);
 
-	// Iteraciones máximas
+	// Maximum iterations
 	if (fgets(renglon, sizeof(renglon), stdin) == NULL) err_flag = 1;
 	else sscanf(renglon, "%d", &itMax);
 
-	// Probabilidad de recombinación
+	// Recombination probability
 	if (fgets(renglon, sizeof(renglon), stdin) == NULL) err_flag = 1;
 	else sscanf(renglon, "%f", &Cr);
 
-	// Factor de mutación
+	// Mutation factor
 	if (fgets(renglon, sizeof(renglon), stdin) == NULL) err_flag = 1;
 	else sscanf(renglon, "%f", &Fm);
 
-	// Semilla para números aleatorios
+	// Seed for random numbers
 	if (fgets(renglon, sizeof(renglon), stdin) == NULL) err_flag = 1;
 	else sscanf(renglon, "%d", &seed);
 
 	if (fgets(renglon, sizeof(renglon), stdin) == NULL) err_flag = 1;
 	if (fgets(renglon, sizeof(renglon), stdin) == NULL) err_flag = 1;
 
-	// Tiempo inicial
+	/* Initial conditions for ODE solve */
+	// Initial time
 	if (fgets(renglon, sizeof(renglon), stdin) == NULL) err_flag = 1;
 	else sscanf(renglon, "%f", &t0);
 
-	// Tiempo final
+	// Final time
 	if (fgets(renglon, sizeof(renglon), stdin) == NULL) err_flag = 1;
 	else sscanf(renglon, "%f", &tN);
 
@@ -968,20 +942,28 @@ int main()
 	if (fgets(renglon, sizeof(renglon), stdin) == NULL) err_flag = 1;
 	else sscanf(renglon, "%f", &dt);
 
-	// Numero de variables
+	if (fgets(renglon, sizeof(renglon), stdin) == NULL) err_flag = 1;
+	if (fgets(renglon, sizeof(renglon), stdin) == NULL) err_flag = 1;
+
+	/* Parameters to estimate */
+	// Number of parameters to estimate
 	if (fgets(renglon, sizeof(renglon), stdin) == NULL) err_flag = 1;
 	else sscanf(renglon, "%d", &D);
 
-	// Include qualitative fit of CD8
+	// Activate sampling for Bootstraping?
 	if (fgets(renglon, sizeof(renglon), stdin) == NULL) err_flag = 1;
-	else sscanf(renglon, "%d", &flag8);
+	else sscanf(renglon, "%d", &bootFlag);
+
+	// Include qualitative fit?
+	if (fgets(renglon, sizeof(renglon), stdin) == NULL) err_flag = 1;
+	else sscanf(renglon, "%d", &qFlag);
 
 	if (fgets(renglon, sizeof(renglon), stdin) == NULL) err_flag = 1;
 	if (fgets(renglon, sizeof(renglon), stdin) == NULL) err_flag = 1;
 
 	if (err_flag)
 	{
-		printf("Error en archivo de parámetros (.data)\n");
+		printf("Error: Something is wrong in the parameter file (.param)\n");
 		exit (1);
 	}
 
@@ -994,28 +976,29 @@ int main()
 	pars.Np = Np;
 	pars.dt = dt;
 	pars.nData = nData;
-	pars.nDataCD8 = nDataCD8;
-	pars.flag8 = flag8;
+	pars.qnData2 = qnData2;
+	pars.qnData3 = qnData3;
+	pars.qFlag = qFlag;
 
 	// Initial values
-        pars.U10 = 5e8;
-        pars.I10 = 0.0;
-        pars.R10 = 0.0;
-        //pars.F10 = 0.0;
+	pars.U10 = 5e8;
+	pars.I10 = 0.0;
+	pars.R10 = 0.0;
+	pars.F10 = 0.0;
 
-        pars.U20 = 5e8;
-        pars.I20 = 0.0;
-        pars.R20 = 0.0;
-        pars.V20 = 0.0;
-        //pars.F20 = 0.0;
-        pars.T20 = 1e6;
+	pars.U20 = 5e8;
+	pars.I20 = 0.0;
+	pars.R20 = 0.0;
+	pars.V20 = 0.0;
+	pars.F20 = 0.0;
+	pars.T20 = 1e6;
 
-        pars.U30 = 5e8;
-        pars.I30 = 0.0;
-        pars.R30 = 0.0;
-        pars.V30 = 0.0;
-        //pars.F30 = 0.0;
-        pars.T30 = 1e6;
+	pars.U30 = 5e8;
+	pars.I30 = 0.0;
+	pars.R30 = 0.0;
+	pars.V30 = 0.0;
+	pars.F30 = 0.0;
+	pars.T30 = 1e6;
 
 
 	float *lowerLim, *upperLim, *pop;
@@ -1046,27 +1029,57 @@ int main()
 	// Inicializa números aleatorios
 	if (seed < 0) seed *= -1;
 	Ran ranUni(seed);
-	Normaldev ranNorm(0.0, 1.0, seed); // Standard dev (Z)
-
-	int sizeSample = 1;
-	pars.sizeSample = sizeSample;
-
-	// Generate random data in normal distribution
-	float *dataN, *dataT, *dataL;
-	cudaMallocManaged(&dataN, sizeSample*nData*sizeof(float));
-	cudaMallocManaged(&dataT, sizeSample*nData*sizeof(float));
-	cudaMallocManaged(&dataL, sizeSample*nData*sizeof(float));
-
-	// Linear transformation from Z to normal dev X
-	// Z = (X - meanX) / stdX -> X = Z*stdX + meanX
-	for (ii=0; ii<nData; ii++)
-		for (jj=0; jj<sizeSample; jj++)
+	
+	// Initialize population
+	for (jj=0; jj<D; jj++)
+	{
+		aux = upperLim[jj] - lowerLim[jj];
+		for (ii=0; ii<Np; ii++)
 		{
-			idx = jj + ii*sizeSample;
-			dataN[idx] = meanN[ii];// + stdN[ii]*ranNorm.dev();
-			dataT[idx] = meanT[ii];// + stdT[ii]*ranNorm.dev();
-			dataL[idx] = meanL[ii];// + stdL[ii]*ranNorm.dev();
+			idx = ii*D + jj;
+			if (aux == 0.0) pop[idx] = lowerLim[jj];
+			else pop[idx] = lowerLim[jj] + aux*ranUni.doub();
 		}
+	}
+
+	// Bootstraping
+	viralData *Vdata;
+
+	if (bootFlag)
+	{
+		Normaldev ranNorm(0.0, 1.0, seed); // Standard dev (Z)
+		int sizeSample = 1;
+		pars.sizeSample = sizeSample;
+
+		// Generate random data in normal distribution
+		cudaMallocManaged(&Vdata, sizeSample*nData*sizeof(viralData));
+
+		// Linear transformation from Z to normal dev X
+		// Z = (X - meanX) / stdX -> X = Z*stdX + meanX
+		for (ii=0; ii<nData; ii++)
+			for (jj=0; jj<sizeSample; jj++)
+			{
+				idx = jj + ii*sizeSample;
+				Vdata[idx].time = timeData[ii];
+				Vdata[idx].V1 = meanN[ii] + stdN[ii]*ranNorm.dev();
+				Vdata[idx].V2 = meanT[ii] + stdT[ii]*ranNorm.dev();
+				Vdata[idx].V3 = meanL[ii] + stdL[ii]*ranNorm.dev();
+			}
+	}
+	else
+	{
+		cudaMallocManaged(&Vdata, nData*sizeof(viralData));
+
+		for (ii=0; ii<nData; ii++)
+		{
+			Vdata[ii].time = timeData[ii];
+			Vdata[ii].V1 = meanN[ii];
+			Vdata[ii].V2 = meanT[ii];
+			Vdata[ii].V3 = meanL[ii];
+		}
+	}
+
+	free(timeData);
 	free(meanN);
 	free(meanT);
 	free(meanL);
@@ -1074,33 +1087,22 @@ int main()
 	free(stdT);
 	free(stdL);
 
-	// Inicializa población
-	for (jj=0; jj<D; jj++)
-	{
-		aux = upperLim[jj] - lowerLim[jj];
-		for (ii=0; ii<Np; ii++)
-		{
-			idx = ii*D + jj;
-			pop[idx] = lowerLim[jj] + aux*ranUni.doub();
-		}
-	}
-
 	int ths, blks;
-	float *valCostFn, *d_newValCostFn;
+	float *costFn, *d_newCostFn;
 
-	cudaMallocManaged(&valCostFn, Np*sizeof(float));
-	cudaMalloc(&d_newValCostFn, Np*sizeof(float));
+	cudaMallocManaged(&costFn, Np*sizeof(float));
+	cudaMalloc(&d_newCostFn, Np*sizeof(float));
 
 	// Estimate the number of threads and blocks for the GPU
 	ths = (Np < THS_MAX) ? nextPow2(Np) : THS_MAX;
 	blks = 1 + (Np - 1)/ths;
 
-	// Calcula el valor de la función objetivo
-	costFunction<<<blks, ths>>>(pars, pop, timeData, dataN, dataT, dataL, timeCD8, cd8Data, valCostFn);
+	// Cost function value for the first generation
+	costFunction<<<blks, ths>>>(pars, pop, Vdata, Twindows2, Twindows3, costFn);
 	cudaDeviceSynchronize();
 
     	/*+*+*+*+*+ START OPTIMIZATION +*+*+*+*+*/
-	int it, xx, yy, zz, flag;
+	int it, xx, yy, zz;
 	int3 *iiMut;
 	float *d_randUni, *d_newPop;
 	float minVal;
@@ -1119,23 +1121,14 @@ int main()
 	// Empiezan las iteraciones
 	for (it=0; it<itMax; it++)
 	{
-		flag = it%50;
-
-		// Encuentra cual es el minimo de la pobalción
-		minVal = valCostFn[0];
-		iiMin = 0;
-		if (!flag)
-			for(ii=1; ii<Np; ii++) if (minVal > valCostFn[ii])
-			{
-				minVal = valCostFn[ii];
-				iiMin = ii;
-			}
-
-		if (!flag)
-		{
-			printf("Iteration %d\n", it);
-			printf("RMS_min = %f\n", minVal);
-		}
+		//minVal = valCostFn[0];
+		//iiMin = 0;
+		//if (!flag)
+		//	for(ii=1; ii<Np; ii++) if (minVal > valCostFn[ii])
+		//	{
+		//		minVal = valCostFn[ii];
+		//		iiMin = ii;
+		//	}
 
 		//xx = iiMin;
 		for (ii=0; ii<Np; ii++)
@@ -1150,52 +1143,47 @@ int main()
 		// Generate random numbers and then update positions
 		curandGenerateUniform(gen, d_randUni, Np*D);
 
-		// Genera nueva población
+		// Generate new population
 		newPopulation<<<blks, ths>>>(Np, D, Cr, Fm, d_randUni, iiMut, lowerLim, upperLim, pop, d_newPop);
 
-		// Calcula el valor de la función objetivo
-		costFunction<<<blks, ths>>>(pars, d_newPop, timeData, dataN, dataT, dataL, timeCD8, cd8Data, d_newValCostFn);
+		// Calculate cost function values
+		costFunction<<<blks, ths>>>(pars, d_newPop, Vdata, Twindows2, Twindows3, d_newCostFn);
 
-		// Selecciona el mejor vector y lo guarda en la poblacion "pop"
-		selection<<<blks, ths>>>(Np, D, pop, d_newPop, valCostFn, d_newValCostFn);
+		// Select the best vectors between new ones and old ones
+		selection<<<blks, ths>>>(Np, D, pop, d_newPop, costFn, d_newCostFn);
 
 		cudaDeviceSynchronize();
 	}
 
-	// Encuentra cual es el minimo de la pobalción
-	minVal = valCostFn[0];
+	// Find the minimum of the population
+	minVal = costFn[0];
 	iiMin = 0;
-	for (ii=1; ii<Np; ii++) if (minVal > valCostFn[ii])
+	for (ii=1; ii<Np; ii++) if (minVal > costFn[ii])
 	{
-		minVal = valCostFn[ii];
+		minVal = costFn[ii];
 		iiMin = ii;
 	}
 
-	// Imprime el mejor vector de parámetros
-
-	FILE *fPar;
-	fPar = fopen("bestPars.dat", "w");
-	fprintf(fPar, "#BestPar: RMS = %e\n", minVal);
-	for (jj=0; jj<D; jj++) fprintf(fPar, "%e\n", pop[iiMin*D + jj]);
-	fclose(fPar);
+	FILE *fBestPars;
+	fBestPars = fopen("bestPars.dat", "a");
+	for (jj=0; jj<D; jj++) fprintf(fBestPars, "%.4e ", pop[iiMin*D + jj]);
+	fprintf(fBestPars, "%.4e\n", minVal);
+	fclose(fBestPars);
 
 	printf("FINISHED\n");
 
-	cudaFree(timeData);
-	cudaFree(timeCD8);
+	cudaFree(Vdata);
+	cudaFree(Twindows2);
+	cudaFree(Twindows3);
 	cudaFree(lowerLim);
 	cudaFree(upperLim);
-	cudaFree(dataN);
-	cudaFree(dataT);
-	cudaFree(dataL);
-	cudaFree(cd8Data);
 	cudaFree(iiMut);
 	cudaFree(pop);
 	cudaFree(d_newPop);
-	cudaFree(valCostFn);
-	cudaFree(d_newValCostFn);
+	cudaFree(costFn);
+	cudaFree(d_newCostFn);
 	cudaFree(d_randUni);
 	curandDestroyGenerator(gen);
 
-	exit (0);
+	return 0;
 }
