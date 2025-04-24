@@ -1165,9 +1165,9 @@ int main()
 	}
 
 	FILE *fBestPars;
-	fBestPars = fopen("bestPars.dat", "a");
-	for (jj=0; jj<D; jj++) fprintf(fBestPars, "%.4e ", pop[iiMin*D + jj]);
-	fprintf(fBestPars, "%.4e\n", minVal);
+	fBestPars = fopen("bestPars.dat", "w");
+	fprintf(fBestPars, "#RSS = %.4e\n", minVal);
+	for (jj=0; jj<D; jj++) fprintf(fBestPars, "%.4e\n", pow(10, pop[iiMin*D + jj]));
 	fclose(fBestPars);
 
 	printf("FINISHED\n");
