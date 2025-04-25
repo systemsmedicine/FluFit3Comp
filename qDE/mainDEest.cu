@@ -1164,6 +1164,7 @@ int main()
 		iiMin = ii;
 	}
 
+	float temp = 1.5*x;
 	FILE *fBestPars;
 	fBestPars = fopen("bestPars.dat", "w");
 	fprintf(fBestPars, "#RSS = %.4e\n", minVal);
