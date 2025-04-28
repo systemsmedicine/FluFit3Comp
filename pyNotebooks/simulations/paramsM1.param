@@ -11,6 +11,7 @@
 0.05		# Step time
 
 ### Parameters to estimate (ranges)
+1			# Number of the model to use
 39			# Number of parmeters to estimate
 0       	# Resampling for bootstrap?
 0       	# Include qualitative fit?
@@ -20,18 +21,18 @@
 [-8 : -4]				# beta1 
 [0 : 0]		# xi1
 [0 : 0]		# chi1
-[0 : 1]					# delta1
-[-2 : -1]				# rho1
-[0 : 1]					# sigma1
+[-2 : 1]				# delta1
+[-2 : 1]				# rho1
+[-2 : 1]				# sigma1
 [0 : 0]		# alpha1
 [0 : 0]		# phi1
 [-8 : -4]				# beta2
 [0 : 0]		# xi2
 [0 : 0]		# chi2
 [0 : 0]		# psi2
-[0 : 1]					# delta2
-[-2 : -1]				# rho2
-[0 : 1]					# sigma2
+[-2 : 1]				# delta2
+[-2 : 1]				# rho2
+[-2 : 1]				# sigma2
 [0 : 0]		# alpha2
 [0 : 0]		# phi2
 [0 : 0]		# eta2
@@ -41,17 +42,17 @@
 [0 : 0]		# xi3
 [0 : 0]		# chi3
 [0 : 0]		# psi3
-[0 : 1]					# delta3
+[-2 : -1]				# delta3
 [-2 : -1]				# rho3
-[0 : 1]					# sigma3
+[-2 : -1]				# sigma3
 [0 : 0]		# alpha3
 [0 : 0]		# phi3
 [0 : 0]		# eta3
 [0 : 0]		# kappa3
 [0 : 0]		# upsilon3
-[-6 : 1]				# gamma12
-[-6 : 1]				# gamma21
-[-6 : 1]				# gamma23
-[-6 : 1]				# gamma32
+[-6 : 0]				# gamma12
+[-6 : 0]				# gamma21
+[-6 : 0]				# gamma23
+[-6 : 0]				# gamma32
 [0 : 0]		# zeta23
 [0 : 0]		# zeta32

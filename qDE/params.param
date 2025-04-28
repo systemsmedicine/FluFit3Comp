@@ -11,6 +11,7 @@
 0.05		# Step time
 
 ### Parameters to estimate (ranges)
+1			# Number of the model to use
 39			# Number of parmeters to estimate
 0       	# Resampling for bootstrap?
 0       	# Include qualitative fit?
