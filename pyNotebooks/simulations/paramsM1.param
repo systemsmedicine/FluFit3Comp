@@ -8,7 +8,7 @@
 ### Initial conditions for ODE solve
 0.0			# Initial time
 12.0		# Final time
-0.05		# Step time
+0.10		# Step time
 
 ### Parameters to estimate (ranges)
 1			# Number of the model to use
@@ -16,43 +16,43 @@
 0       	# Resampling for bootstrap?
 0       	# Include qualitative fit?
 
-# Limits [Lower : Upper] (in log10 scale)
-[2 : 4.5]				# V(t=0)
+# Limits [Lower : Upper] (in log10 scale);use 38 to report as NaN
+[1 : 4.5]				# V(t=0)
 [-8 : -4]				# beta1 
-[0 : 0]		# xi1
-[0 : 0]		# chi1
+[38 : 38]	# xi1
+[38 : 38]	# chi1
 [-2 : 1]				# delta1
-[-2 : 1]				# rho1
-[-2 : 1]				# sigma1
-[0 : 0]		# alpha1
-[0 : 0]		# phi1
+[0 : 0]					# rho1 (log10 1 Hern)
+[0.62324929 : 0.62324929]	# sigma1 (log10 4.2 Hern)
+[38 : 38]	# alpha1
+[38 : 38]	# phi1
 [-8 : -4]				# beta2
-[0 : 0]		# xi2
-[0 : 0]		# chi2
-[0 : 0]		# psi2
+[38 : 38]	# xi2
+[38 : 38]	# chi2
+[38 : 38]	# psi2
 [-2 : 1]				# delta2
-[-2 : 1]				# rho2
-[-2 : 1]				# sigma2
-[0 : 0]		# alpha2
-[0 : 0]		# phi2
-[0 : 0]		# eta2
-[0 : 0]		# kappa2
-[0 : 0]		# upsilon2
+[0 : 0]					# rho2 (log10 1 Hern)
+[0.62324929 : 0.62324929]	# sigma2 (log10 4.2 Hern)
+[38 : 38]		# alpha2
+[38 : 38]		# phi2
+[38 : 38]		# eta2
+[38 : 38]		# kappa2
+[38 : 38]		# upsilon2
 [-8 : -4]				# beta3
-[0 : 0]		# xi3
-[0 : 0]		# chi3
-[0 : 0]		# psi3
+[38 : 38]	# xi3
+[38 : 38]	# chi3
+[38 : 38]	# psi3
 [-2 : -1]				# delta3
-[-2 : -1]				# rho3
-[-2 : -1]				# sigma3
-[0 : 0]		# alpha3
-[0 : 0]		# phi3
-[0 : 0]		# eta3
-[0 : 0]		# kappa3
-[0 : 0]		# upsilon3
+[0 : 0]					# rho3 (log10 1 Hern)
+[0.62324929 : 0.62324929]	# sigma3 (log10 4.2 Hern)
+[38 : 38]	# alpha3
+[38 : 38]	# phi3
+[38 : 38]	# eta3
+[38 : 38]	# kappa3
+[38 : 38]	# upsilon3
 [-6 : 0]				# gamma12
 [-6 : 0]				# gamma21
 [-6 : 0]				# gamma23
 [-6 : 0]				# gamma32
-[0 : 0]		# zeta23
-[0 : 0]		# zeta32
+[38 : 38]	# zeta23
+[38 : 38]	# zeta32

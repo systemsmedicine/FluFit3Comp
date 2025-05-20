@@ -536,7 +536,7 @@ __global__ void costFunction(param pars, float *pop, viralData *Vdata,
 			isnan(Y.R1) || isnan(Y.R2) || isnan(Y.R3) ||
 			isnan(Y.V1) || isnan(Y.V2) || isnan(Y.V3) ||
 			isnan(Y.F1) || isnan(Y.F2) || isnan(Y.F3) ||
-					isnan(Y.T2) || isnan(Y.T3) ||
+						   isnan(Y.T2) || isnan(Y.T3) ||
 			isinf(Y.U1) || isinf(Y.U2) || isinf(Y.U3) ||
 			isinf(Y.I1) || isinf(Y.I2) || isinf(Y.I3) ||
 			isinf(Y.R1) || isinf(Y.R2) || isinf(Y.R3) ||
@@ -1015,19 +1015,19 @@ int main()
 	pars.qFlag = qFlag;
 
 	// Initial values
-	pars.U10 = 5e8;
+	pars.U10 = 1e7;
 	pars.I10 = 0.0;
 	pars.R10 = 0.0;
 	pars.F10 = 0.0;
 
-	pars.U20 = 5e8;
+	pars.U20 = 1e7;
 	pars.I20 = 0.0;
 	pars.R20 = 0.0;
 	pars.V20 = 0.0;
 	pars.F20 = 0.0;
 	pars.T20 = 2e2;
 
-	pars.U30 = 5e8;
+	pars.U30 = 1e7;
 	pars.I30 = 0.0;
 	pars.R30 = 0.0;
 	pars.V30 = 0.0;
@@ -1203,10 +1203,10 @@ int main()
 
 	FILE *fBestPars;
 	fBestPars = fopen("bestPars.dat", "w");
-	fprintf(fBestPars, "# RSS = %.4e\n", minVal);
+	fprintf(fBestPars, "%.6f\n", log10(minVal));
 	for (jj=0; jj<D; jj++)
 	{
-		if (lowerLim[jj] == 0 && upperLim[jj] == 0)
+		if (lowerLim[jj] == 38 && upperLim[jj] == 38)
 			fprintf(fBestPars, "NaN\n");
 		else
 			fprintf(fBestPars, "%.6f\n", pop[iiMin*D + jj]);
