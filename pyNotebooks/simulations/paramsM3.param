@@ -11,7 +11,7 @@
 0.10		# Step time
 
 ### Parameters to estimate (ranges)
-1			# Number of the model to use
+3			# Number of the model to use
 39			# Number of parmeters to estimate
 0       	# Resampling for bootstrap?
 0       	# Include qualitative fit?
@@ -19,34 +19,34 @@
 # Limits [Lower : Upper] (in log10 scale);use 38 to report as NaN
 [1 : 4.5]				# V(t=0)
 [-8 : -4]				# beta1 
-[38 : 38]	# xi1
+[0.84509804 : 0.84509804]		# xi1 (log10 7 Baccam)
 [38 : 38]	# chi1
 [-2 : 1]				# delta1
 [0 : 0]							# rho1 (log10 1 Hern)
 [0.62324929 : 0.62324929]		# sigma1 (log10 4.2 Hern)
-[38 : 38]	# alpha1
-[38 : 38]	# phi1
+[-8 : -4]				# alpha1
+[-2 : 1]				# phi1
 [-8 : -4]				# beta2
-[38 : 38]	# xi2
+[0.84509804 : 0.84509804]		# xi2 (log10 7 Baccam)
 [38 : 38]	# chi2
 [38 : 38]	# psi2
 [-2 : 1]				# delta2
 [0 : 0]							# rho2 (log10 1 Hern)
 [0.62324929 : 0.62324929]		# sigma2 (log10 4.2 Hern)
-[38 : 38]	# alpha2
-[38 : 38]	# phi2
+[-8 : -4]				# alpha2
+[-2 : 1]				# phi2
 [38 : 38]	# eta2
 [38 : 38]	# kappa2
 [38 : 38]	# upsilon2
 [-8 : -4]				# beta3
-[38 : 38]	# xi3
+[0.84509804 : 0.84509804]		# xi3 (log10 7 Baccam)
 [38 : 38]	# chi3
 [38 : 38]	# psi3
-[-2 : 1]				# delta3
+[-2 : -1]				# delta3
 [0 : 0]							# rho3 (log10 1 Hern)
 [0.62324929 : 0.62324929]		# sigma3 (log10 4.2 Hern)
-[38 : 38]	# alpha3
-[38 : 38]	# phi3
+[-8 : -4]				# alpha3
+[-2 : 1]				# phi3
 [38 : 38]	# eta3
 [38 : 38]	# kappa3
 [38 : 38]	# upsilon3

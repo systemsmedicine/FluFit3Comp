@@ -1,5 +1,5 @@
 HOST_COMPILER = gcc
-NVCCFLAGS = -O2
+NVCCFLAGS = -O2 -arch=sm_86
 LIBRARIES = -lm -lcurand
 #NVCC = nvcc -ccbin $(HOST_COMPILER) $(NVCCFLAGS) 
 NVCC = nvcc $(NVCCFLAGS)

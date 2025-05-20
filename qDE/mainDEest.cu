@@ -287,6 +287,110 @@ __device__ void model(int idx, param pars, float *pop, comp Y, comp *dotY)
 		dotY->T3 = 0.0f;
 	}
 
+	if (model == 2)
+	{
+		dotY->U1 = -bet1*Y.U1*Y.V1 - xi1*Y.U1*Y.I1; 
+		dotY->I1 = bet1*Y.U1*Y.V1 - del1*Y.I1;
+		dotY->V1 = rho1*Y.I1 - sig1*Y.V1 - gam12*Y.V1 + gam21*Y.V2;
+
+		dotY->U2 = -bet2*Y.U2*Y.V2 - xi2*Y.U2*Y.I2;
+		dotY->I2 = bet2*Y.U2*Y.V2 - del2*Y.I2; 
+		dotY->V2 = rho2*Y.I2 - sig2*Y.V2
+			- gam21*Y.V2 + gam12*Y.V1 - gam23*Y.V2 + gam32*Y.V3;
+
+		dotY->U3 = -bet3*Y.U3*Y.V3 - xi3*Y.U3*Y.I3;
+		dotY->I3 = bet3*Y.U3*Y.V3 - del3*Y.I3; 
+		dotY->V3 = rho3*Y.I3 - sig3*Y.V3 - gam32*Y.V3 + gam23*Y.V2;
+		
+		dotY->R1 = 0.0f;
+		dotY->F1 = 0.0f;
+		dotY->R2 = 0.0f;
+		dotY->F2 = 0.0f;
+		dotY->T2 = 0.0f;
+		dotY->R3 = 0.0f;
+		dotY->F3 = 0.0f;
+		dotY->T3 = 0.0f;
+	}
+
+	if (model == 3)
+	{
+		dotY->U1 = -bet1*Y.U1*Y.V1 - xi1*Y.U1*Y.F1; 
+		dotY->I1 = bet1*Y.U1*Y.V1 - del1*Y.I1;
+		dotY->V1 = rho1*Y.I1 - sig1*Y.V1 - gam12*Y.V1 + gam21*Y.V2;
+		dotY->F1 = alp1*Y.I1 - phi1*Y.F1;
+
+		dotY->U2 = -bet2*Y.U2*Y.V2 - xi2*Y.U2*Y.F2;
+		dotY->I2 = bet2*Y.U2*Y.V2 - del2*Y.I2; 
+		dotY->V2 = rho2*Y.I2 - sig2*Y.V2
+			- gam21*Y.V2 + gam12*Y.V1 - gam23*Y.V2 + gam32*Y.V3;
+		dotY->F2 = alp2*Y.I2 - phi2*Y.F2;
+
+		dotY->U3 = -bet3*Y.U3*Y.V3 - xi3*Y.U3*Y.F3;
+		dotY->I3 = bet3*Y.U3*Y.V3 - del3*Y.I3; 
+		dotY->V3 = rho3*Y.I3 - sig3*Y.V3 - gam32*Y.V3 + gam23*Y.V2;
+		dotY->F3 = alp3*Y.I3 - phi3*Y.F3;
+		
+		dotY->R1 = 0.0f;
+		dotY->R2 = 0.0f;
+		dotY->T2 = 0.0f;
+		dotY->R3 = 0.0f;
+		dotY->T3 = 0.0f;
+	}
+
+	if (model == 4)
+	{
+		dotY->U1 = -bet1*Y.U1*Y.V1; 
+		dotY->I1 = bet1*Y.U1*Y.V1 - del1*Y.I1;
+		dotY->V1 = rho1*Y.I1 - sig1*Y.V1 - gam12*Y.V1 + gam21*Y.V2;
+
+		dotY->U2 = -bet2*Y.U2*Y.V2; 
+		dotY->I2 = bet2*Y.U2*Y.V2 - del2*Y.I2 - psi2*Y.I2*Y.T2;
+		dotY->V2 = rho2*Y.I2 - sig2*Y.V2
+			- gam21*Y.V2 + gam12*Y.V1 - gam23*Y.V2 + gam32*Y.V3;
+		dotY->T2 = eta2*Y.T2*(pow(Y.V2,m)/(pow(Y.V2,m) + pow(kap2,m)))
+			- ups2*Y.T2 + ups2*T20 - zet23*Y.T2 + zet32*Y.T3;
+
+		dotY->U3 = -bet3*Y.U3*Y.V3;
+		dotY->I3 = bet3*Y.U3*Y.V3 - del3*Y.I3 - psi3*Y.I3*Y.T3;
+		dotY->V3 = rho3*Y.I3 - sig3*Y.V3 - gam32*Y.V3 + gam23*Y.V2;
+		dotY->T3 = eta3*Y.T3*(pow(Y.V3,m)/(pow(Y.V3,m) + pow(kap3,m)))
+			- ups3*Y.T3 + ups3*T30 - zet32*Y.T3 + zet23*Y.T2;
+		
+		dotY->R1 = 0.0f;
+		dotY->F1 = 0.0f;
+		dotY->R2 = 0.0f;
+		dotY->F2 = 0.0f;
+		dotY->R3 = 0.0f;
+		dotY->F3 = 0.0f;
+	}
+
+	if (model == 5) // Hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+	{
+		dotY->U1 = -bet1*Y.U1*Y.V1 - xi1*Y.U1*Y.F1; 
+		dotY->I1 = bet1*Y.U1*Y.V1 - del1*Y.I1;
+		dotY->V1 = rho1*Y.I1 - sig1*Y.V1 - gam12*Y.V1 + gam21*Y.V2;
+
+		dotY->U2 = -bet2*Y.U2*Y.V2; 
+		dotY->I2 = bet2*Y.U2*Y.V2 - del2*Y.I2 - psi2*Y.I2*Y.T2;
+		dotY->V2 = rho2*Y.I2 - sig2*Y.V2
+			- gam21*Y.V2 + gam12*Y.V1 - gam23*Y.V2 + gam32*Y.V3;
+		dotY->T2 = eta2*Y.T2*(pow(Y.V2,m)/(pow(Y.V2,m) + pow(kap2,m)))
+			- ups2*Y.T2 + ups2*T20 - zet23*Y.T2 + zet32*Y.T3;
+
+		dotY->U3 = -bet3*Y.U3*Y.V3;
+		dotY->I3 = bet3*Y.U3*Y.V3 - del3*Y.I3 - psi3*Y.I3*Y.T3;
+		dotY->V3 = rho3*Y.I3 - sig3*Y.V3 - gam32*Y.V3 + gam23*Y.V2;
+		dotY->T3 = eta3*Y.T3*(pow(Y.V3,m)/(pow(Y.V3,m) + pow(kap3,m)))
+			- ups3*Y.T3 + ups3*T30 - zet32*Y.T3 + zet23*Y.T2;
+		
+		dotY->R1 = 0.0f;
+		dotY->F1 = 0.0f;
+		dotY->R2 = 0.0f;
+		dotY->F2 = 0.0f;
+		dotY->R3 = 0.0f;
+		dotY->F3 = 0.0f;
+	}
+
 //	dotY->U1 = -bet1*Y.U1*Y.V1 - xi1*Y.U1*Y.I1 + chi1*Y.R1;
 //	dotY->I1 = bet1*Y.U1*Y.V1 - del1*Y.I1;
 //	dotY->R1 = xi1*Y.U1*Y.I1 - chi1*Y.R1;
