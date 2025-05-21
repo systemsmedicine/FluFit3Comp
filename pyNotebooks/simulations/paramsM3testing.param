@@ -1,6 +1,6 @@
 ### DE parameters
 8192		# Population of parameter vectors (GPU threads)
-4000		# Max iterations
+2000		# Max iterations
 0.8			# Recombination probability (Cr)
 0.8			# Mutation factor (Fm)
 12345		# Seed for random numbers
@@ -11,7 +11,7 @@
 0.10		# Step time
 
 ### Parameters to estimate (ranges)
-4			# Number of the model to use
+3			# Number of the model to use
 39			# Number of parmeters to estimate
 0       	# Resampling for bootstrap?
 0       	# Include qualitative fit?
@@ -19,40 +19,40 @@
 # Limits [Lower : Upper] (in log10 scale);use 38 to report as NaN
 [1 : 4.5]				# V(t=0)
 [-8 : -4]				# beta1 
-[38 : 38]	# xi1
+[0.84509804 : 0.84509804]		# xi1 (log10 7 Baccam)
 [38 : 38]	# chi1
 [-2 : 1]				# delta1
 [0 : 0]							# rho1 (log10 1 Hern)
 [0.62324929 : 0.62324929]		# sigma1 (log10 4.2 Hern)
-[38 : 38]	# alpha1
-[38 : 38]	# phi1
+[-8 : -4]				# alpha1
+[-2 : -2]						# phi1 (log10 0.346 IFN half-life 2d)
 [-8 : -4]				# beta2
-[38 : 38]	# xi2
+[0.84509804 : 0.84509804]		# xi2 (log10 7 Baccam)
 [38 : 38]	# chi2
-[-8 : -4]				# psi2
+[38 : 38]	# psi2
 [-2 : 1]				# delta2
 [0 : 0]							# rho2 (log10 1 Hern)
 [0.62324929 : 0.62324929]		# sigma2 (log10 4.2 Hern)
-[38 : 38]	# alpha2
-[38 : 38]	# phi2
-[-2 : 1]				# eta2
-[2 : 5]					# kappa2
-[-2 : -2]						# upsilon2 (T cell half-life)
+[-8 : -4]				# alpha2
+[-2 : -2]						# phi2 (log10 0.346 IFN half-life 2d)
+[38 : 38]	# eta2
+[38 : 38]	# kappa2
+[38 : 38]	# upsilon2
 [-8 : -4]				# beta3
-[38 : 38]	# xi3
+[0.84509804 : 0.84509804]		# xi3 (log10 7 Baccam)
 [38 : 38]	# chi3
-[-8 : -4]				# psi3
-[-2 : 1]				# delta3
+[38 : 38]	# psi3
+[-2 : -1]				# delta3
 [0 : 0]							# rho3 (log10 1 Hern)
 [0.62324929 : 0.62324929]		# sigma3 (log10 4.2 Hern)
-[38 : 38]	# alpha3
-[38 : 38]	# phi3
-[-2 : 1]				# eta3
-[2 : 5]					# kappa3
-[-2 : -2]						# upsilon3 (T cell half-life)
+[-8 : -4]				# alpha3
+[-2 : -2]						# phi3 (log10 0.346 IFN half-life 2d)
+[38 : 38]	# eta3
+[38 : 38]	# kappa3
+[38 : 38]	# upsilon3
 [-6 : 0]				# gamma12
 [-6 : 0]				# gamma21
 [-6 : 0]				# gamma23
 [-6 : 0]				# gamma32
-[-6 : 0]				# zeta23
-[-6 : 0]				# zeta32
+[38 : 38]	# zeta23
+[38 : 38]	# zeta32
