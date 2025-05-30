@@ -16,7 +16,7 @@
 0       	# Resampling for bootstrap?
 0       	# Include qualitative fit?
 
-# Limits [Lower : Upper] (in log10 scale);use 38 to report as NaN
+# Limits [Lower : Upper] (in log10 scale); use 38 to report as NaN
 [1 : 4.5]				# V(t=0)
 [-8 : -4]				# beta1 
 [38 : 38]	# xi1

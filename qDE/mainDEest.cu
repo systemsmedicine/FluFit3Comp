@@ -65,6 +65,9 @@ typedef struct
 	float V1;
 	float V2;
 	float V3;
+	float stdV1;
+	float stdV2;
+	float stdV3;
 } 
 viralData;
 
@@ -154,7 +157,7 @@ typedef struct
 	int qnData2;
 	int qnData3;
 	int qFlag;
-	int sizeSample;
+	int bootFlag;
 } 
 param;
 
@@ -590,6 +593,7 @@ __global__ void costFunction(param pars, float *pop, viralData *Vdata,
 
 	int penaltyFlag = 0;
 	int rssFlag = 1;
+	int bootFlag = pars.bootFlag;
 	int qFlag2 = pars.qFlag;
 	int qFlag3 = pars.qFlag;
 	int nn = 0, qnn2 = 0, qnn3 = 0;
@@ -679,14 +683,17 @@ __global__ void costFunction(param pars, float *pop, viralData *Vdata,
 			{
 				aux = Y.V1 < 1.0 ? 0.0 : log10(Y.V1);
 				aux -= qtData.V1;
+				//if (!bootFlag) aux /= qtData.stdV1;
 				sum2 += aux*aux;
 
 				aux = Y.V2 < 1.0 ? 0.0 : log10(Y.V2);
 				aux -= qtData.V2;
+				//if (!bootFlag) aux /= qtData.stdV2;
 				sum2 += aux*aux;
 
 				aux = Y.V3 < 1.0 ? 0.0 : log10(Y.V3);
 				aux -= qtData.V3;
+				//if (!bootFlag) aux /= qtData.stdV3;
 				sum2 += aux*aux;
 
 				nn++;
@@ -1117,6 +1124,7 @@ int main()
 	pars.qnData2 = qnData2;
 	pars.qnData3 = qnData3;
 	pars.qFlag = qFlag;
+	pars.bootFlag = bootFlag;
 
 	// Initial values
 	pars.U10 = 1e7;
@@ -1186,8 +1194,7 @@ int main()
 	if (bootFlag)
 	{
 		Normaldev ranNorm(0.0, 1.0, seed); // Standard dev (Z)
-		int sizeSample = 1;
-		pars.sizeSample = sizeSample;
+		int sizeSample = 5;
 
 		// Generate random data in normal distribution
 		cudaMallocManaged(&Vdata, sizeSample*nData*sizeof(viralData));
@@ -1214,6 +1221,9 @@ int main()
 			Vdata[ii].V1 = meanN[ii];
 			Vdata[ii].V2 = meanT[ii];
 			Vdata[ii].V3 = meanL[ii];
+			Vdata[ii].stdV1 = stdN[ii];
+			Vdata[ii].stdV2 = stdT[ii];
+			Vdata[ii].stdV3 = stdL[ii];
 		}
 	}
 
