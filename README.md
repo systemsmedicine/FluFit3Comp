@@ -1,6 +1,6 @@
 # fluFit3: Multicompartment Modeling of Influenza A Replication Along the Murine Respiratory Tract
 
-This repository contains code and data for fitting mathematical models of influenza A (H3N2) infection dynamics in mice across three anatomical compartments: **nose**, **trachea**, and **lungs**. Parameter estimation and model fitting are performed using a Python code via Jupyter Notebook.
+This repository contains the code to simulate mathematical models of influenza A (H3N2) infection dynamics in mice across three anatomical compartments: **nose**, **trachea**, and **lungs**.
 
 ---
 
@@ -10,9 +10,8 @@ This repository contains code and data for fitting mathematical models of influe
 
 fluFit3/
 │
-├── fluFit3.ipynb           # Main notebook: model definition, ODE solving, plots, and analysis
+├── fluFit3.ipynb           # Main notebook: model definition, ODE solving, plots
 └──  data/
-    ├── viralDataset.csv    # Experimental viral load data (3 compartments)
     ├── bestPars_M1.csv     # Estimated parameters for Model 1
     ├── bestPars_M2.csv     # Estimated parameters for Model 2
     ├── bestPars_M3.csv     # Estimated parameters for Model 3
@@ -25,5 +24,5 @@ fluFit3/
 
 ## Citation
 
-Blanco-Rodriguez et al. (2026). *Multicompartment Modeling of Influenza A Replication Along the Murine Respiratory Tract*. Frontiers in Virology.
+Blanco-Rodriguez, R., Chi L. America, & Hernandez-Vargas, E. (2026). *Multicompartment Modeling of Influenza A Replication Along the Murine Respiratory Tract*. Frontiers in Virology.
 
